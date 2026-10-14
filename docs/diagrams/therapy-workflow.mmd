@@ -44,6 +44,7 @@ flowchart TB
   end
 
   Pending -.-> Cancel["Cancel eligible workflow<br/>Release confirmed reservations"]
+  Rejected -.-> Cancel
   Ready -.-> Cancel
   Scheduled -.-> Cancel
   Cancel --> Cancelled["cancelled"]

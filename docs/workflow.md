@@ -8,6 +8,14 @@ The diagrams describe the implemented Go workflow and the portal actions that dr
 
 The editable diagram source is [therapy-workflow.mmd](diagrams/therapy-workflow.mmd). Positive outcomes may arrive in any order while approvals are pending; the three branches represent independent prerequisites, rather than automatically invoked payer or pharmacy services.
 
+To regenerate the README graphic with Mermaid CLI:
+
+```powershell
+npx --yes --package @mermaid-js/mermaid-cli@12.0.0 mmdc -i docs/diagrams/therapy-workflow.mmd -o docs/images/therapy-workflow.svg -c docs/diagrams/mermaid-config.json -b white
+```
+
+Run this from the repository root. Mermaid CLI requires a compatible browser; when using an existing Chrome installation, supply its Puppeteer configuration with `-p <config.json>`.
+
 | Current state | Authorized action / condition | Result |
 | --- | --- | --- |
 | New order | Patient belongs to an authorized facility; required order input passes validation | `awaiting_approvals`; order, workflow, initial job, audit and outbox changes commit together. |
@@ -105,13 +113,13 @@ sequenceDiagram
       Relay->>DB: Mark delivered using current lease
     else Delivery fails or acknowledgment is uncertain
       Relay->>DB: Preserve retryable delivery state
-      Note over Relay,Kafka: Delivery is at least once; consumers deduplicate event IDs
+      Note over Relay,Kafka: Delivery is at least once, consumers deduplicate event IDs
     end
   end
   UI->>API: Open authenticated SSE connection
   loop Approximately every 15 seconds
     API->>DB: Recheck tenant lifecycle and membership
-    Note over API: Revalidate token; close stream if access is invalid
+    Note over API: Revalidate token and close stream if access is invalid
     API-->>UI: Tenant refresh hint with no clinical payload
     UI->>API: Refetch authorized current-session queries
     API->>DB: Apply current role and facility scopes
