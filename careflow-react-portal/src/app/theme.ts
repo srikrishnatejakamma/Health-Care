@@ -3,7 +3,7 @@ export const makeTheme = (mode: 'light' | 'dark') =>
   createTheme({
     palette: {
       mode,
-      primary: { main: '#3459e6' },
+      primary: { main: mode === 'light' ? '#3459e6' : '#a6bbff' },
       secondary: { main: '#128970' },
       background: {
         default: mode === 'light' ? '#f6f8fc' : '#101927',

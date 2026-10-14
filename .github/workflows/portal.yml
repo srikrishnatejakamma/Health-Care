@@ -15,11 +15,42 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: careflow-react-portal/package-lock.json
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
       - run: npm ci --no-fund --no-audit
       - run: npm test
       - run: npm run build
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - name: Browser journeys against demo and live Go API
+        working-directory: .
+        env:
+          APP_ENV: development
+          STORE: memory
+          HTTP_ADDR: 127.0.0.1:18080
+          DEMO_SEED: 'true'
+        run: |
+          export AUTH_KEY="$(openssl rand -hex 32)"
+          go build -o "$RUNNER_TEMP/careflow-api" ./cmd/api
+          "$RUNNER_TEMP/careflow-api" > "$RUNNER_TEMP/careflow-api.log" 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:18080/readyz > /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            cat "$RUNNER_TEMP/careflow-api.log"
+            exit 1
+          fi
+          export CAREFLOW_TEST_TOKEN="$(go run ./cmd/token -subject north-admin -tenant north-health)"
+          cd careflow-react-portal
+          npm run test:e2e
       - name: Upload browser failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4

@@ -145,11 +145,14 @@ test('workflow drafts validate and save without changing active therapies', asyn
   await expect(page.getByText('Draft v2', { exact: true })).toBeVisible();
 });
 
-test('dashboard meets automated accessibility checks', async ({ page }) => {
+test('dashboard meets automated accessibility checks in both themes', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Operations overview' })).toBeVisible();
-  const results = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-    .analyze();
-  expect(results.violations.map((v) => ({ id: v.id, nodes: v.nodes.map((n) => n.target) }))).toEqual([]);
+  for (const mode of ['light', 'dark']) {
+    if (mode === 'dark') await page.getByRole('button', { name: 'Toggle theme' }).click();
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+      .analyze();
+    expect(results.violations.map((v) => ({ mode, id: v.id, nodes: v.nodes.map((n) => n.target) }))).toEqual([]);
+  }
 });

@@ -1491,6 +1491,21 @@ code {
 :root[data-theme='dark'] .recharts-cartesian-axis-tick-value {
   fill: #a4b1c7;
 }
+:root[data-theme='dark'] .chart-legend,
+:root[data-theme='dark'] .table-tabs button {
+  color: #a4b1c7;
+}
+:root[data-theme='dark'] .table-tabs button.selected {
+  color: #a6bbff;
+  border-color: #a6bbff;
+}
+:root[data-theme='dark'] .table-tabs button:not(.selected) span,
+:root[data-theme='dark'] .appointment-time span {
+  color: #a4b1c7;
+}
+:root[data-theme='dark'] .appointment-time strong {
+  color: #b1c4ff;
+}
 @media (max-width: 760px) {
   .topbar > .MuiStack-root:last-child > .MuiIconButton-root:first-of-type {
     display: inline-flex;

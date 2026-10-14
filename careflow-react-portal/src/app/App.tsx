@@ -23,6 +23,7 @@ const Guide = lazy(() => import('../features/administration/Guide'));
 export default function App() {
   const mode = useSession((s) => s.theme);
   const me = useSession((s) => s.me);
+  const epoch = useSession((s) => s.epoch);
   const theme = useMemo(() => makeTheme(mode), [mode]);
   useEffect(() => {
     document.documentElement.dataset.theme = mode;
@@ -43,7 +44,7 @@ export default function App() {
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route element={me ? <MainLayout /> : <Navigate to="/login" replace />}>
+                <Route element={me ? <MainLayout key={epoch} /> : <Navigate to="/login" replace />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />
                   {[

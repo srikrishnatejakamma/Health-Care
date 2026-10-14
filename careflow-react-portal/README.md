@@ -81,7 +81,7 @@ npx playwright test live.spec.ts
 Remove-Item Env:CAREFLOW_TEST_TOKEN
 ```
 
-Use only synthetic data for this test: it creates records. Its tracing and screenshots are disabled to keep credentials out of artifacts. Demo browser tests cover module rendering, tenant isolation, workflow completion, role denial, masking, themes, mobile overflow, designer drafts and automated dashboard accessibility. Automated axe checks do not establish complete WCAG conformance. CI builds and runs unit and demo browser tests; a live test requires an API and credential.
+Use only synthetic data for this test: it creates records. Its tracing and screenshots are disabled to keep credentials out of artifacts. Demo browser tests cover module rendering, tenant isolation, workflow completion, role denial, masking, themes, mobile overflow, designer drafts and automated dashboard accessibility. Automated axe checks do not establish complete WCAG conformance. CI builds, runs unit tests, starts an ephemeral Go API with a random signing key, and runs both demo and live browser journeys.
 
 The nested `go.mod` is an intentional module boundary that keeps npm dependency Go sources out of root `go test ./...` discovery.
 
