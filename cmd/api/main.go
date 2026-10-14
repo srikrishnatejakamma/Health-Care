@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	grpcadapter "healthcare/internal/adapters/grpc"
 	"healthcare/internal/adapters/rest"
 	"healthcare/internal/application"
@@ -18,8 +20,6 @@ import (
 	"syscall"
 	"time"
 	_ "time/tzdata"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 func run() error {
@@ -62,12 +62,25 @@ func run() error {
 	result := make(chan error, 2)
 	var rpc *grpc.Server
 	if c.GRPCAddress != "" {
-		listener,e:=net.Listen("tcp",c.GRPCAddress);if e!=nil{workerStop();wg.Wait();return e}
+		listener, e := net.Listen("tcp", c.GRPCAddress)
+		if e != nil {
+			workerStop()
+			wg.Wait()
+			return e
+		}
 		defer listener.Close()
 		var options []grpc.ServerOption
-		if c.TLSCert!=""{creds,e:=credentials.NewServerTLSFromFile(c.TLSCert,c.TLSKey);if e!=nil{workerStop();wg.Wait();return e};options=append(options,grpc.Creds(creds))}
-		rpc=grpcadapter.New(svc,auth,options...)
-		go func(){result<-rpc.Serve(listener)}()
+		if c.TLSCert != "" {
+			creds, e := credentials.NewServerTLSFromFile(c.TLSCert, c.TLSKey)
+			if e != nil {
+				workerStop()
+				wg.Wait()
+				return e
+			}
+			options = append(options, grpc.Creds(creds))
+		}
+		rpc = grpcadapter.New(svc, auth, options...)
+		go func() { result <- rpc.Serve(listener) }()
 	}
 	go func() {
 		slog.Info("healthcare API started", "address", c.Address, "store", c.Store, "worker_enabled", c.WorkerEnabled)
@@ -85,7 +98,15 @@ func run() error {
 	shutdown, shutdownCancel := context.WithTimeout(context.Background(), c.ShutdownTimeout)
 	defer shutdownCancel()
 	shutdownErr := server.Shutdown(shutdown)
-	if rpc!=nil{done:=make(chan struct{});go func(){rpc.GracefulStop();close(done)}();select{case <-done:case <-shutdown.Done():rpc.Stop()}}
+	if rpc != nil {
+		done := make(chan struct{})
+		go func() { rpc.GracefulStop(); close(done) }()
+		select {
+		case <-done:
+		case <-shutdown.Done():
+			rpc.Stop()
+		}
+	}
 	workerStop()
 	wg.Wait()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {

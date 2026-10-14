@@ -156,8 +156,8 @@ type Event struct {
 	CorrelationID        string    `json:"correlation_id"`
 	OccurredAt           time.Time `json:"occurred_at"`
 	Published            bool      `json:"published"`
-	DeliveryLeaseID string `json:"delivery_lease_id,omitempty"`
-	DeliveryLeaseUntil time.Time `json:"delivery_lease_until,omitempty"`
+	DeliveryLeaseID      string    `json:"delivery_lease_id,omitempty"`
+	DeliveryLeaseUntil   time.Time `json:"delivery_lease_until,omitempty"`
 }
 type Audit struct {
 	ID            string    `json:"id"`

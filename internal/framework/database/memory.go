@@ -171,6 +171,13 @@ func (t *memoryTx) Put(kind, id string, b json.RawMessage) error {
 	if err := validateRecord(t.tenant.ID, id, b); err != nil {
 		return err
 	}
+	var fields struct{PatientID string `json:"patient_id"`;FacilityID string `json:"facility_id"`;ExternalID string `json:"external_id"`}
+	if err:=json.Unmarshal(b,&fields);err!=nil{return err}
+	if fields.PatientID!=""{if _,ok:=t.records["patients/"+fields.PatientID];!ok{return domain.ErrInvalid}}
+	if fields.FacilityID!=""{if _,ok:=t.records["facilities/"+fields.FacilityID];!ok{return domain.ErrInvalid}}
+	switch kind{case "patients","orders","appointments","workflows":if fields.FacilityID==""{return domain.ErrInvalid}}
+	if (kind=="orders"||kind=="appointments")&&fields.PatientID==""{return domain.ErrInvalid}
+	if fields.ExternalID!=""{for k,raw:=range t.records{prefix:=kind+"/";if k==prefix+id||len(k)<=len(prefix)||k[:len(prefix)]!=prefix{continue};var other struct{ExternalID string `json:"external_id"`};if err:=json.Unmarshal(raw,&other);err!=nil{return err};if other.ExternalID==fields.ExternalID{return domain.ErrConflict}}}
 	t.records[kind+"/"+id] = append(json.RawMessage(nil), b...)
 	return nil
 }

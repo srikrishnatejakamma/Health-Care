@@ -76,7 +76,9 @@ func (s *Service) mutate(ctx context.Context, op, key string, input any, fn func
 	hash := hex.EncodeToString(requestHash[:])
 	var response json.RawMessage
 	kind := "idempotency"
-	if strings.HasPrefix(op, "integration.") { kind = "inbox" }
+	if strings.HasPrefix(op, "integration.") {
+		kind = "inbox"
+	}
 	err = s.Store.Atomic(ctx, func(tx database.Tx) error {
 		prior, err := database.Get[idempotency](tx, kind, id)
 		if err == nil {
@@ -328,9 +330,14 @@ func (s *Service) recordOutcome(ctx context.Context, key, id string, in OutcomeI
 	} else if !scope.Has("tenant_admin", "clinical") {
 		return nil, domain.ErrForbidden
 	}
-	op := "workflow.outcome/"+id
-	if inbox { op = "integration.outcome" }
-	input := struct { WorkflowID string `json:"workflow_id"`; OutcomeInput }{id, in}
+	op := "workflow.outcome/" + id
+	if inbox {
+		op = "integration.outcome"
+	}
+	input := struct {
+		WorkflowID string `json:"workflow_id"`
+		OutcomeInput
+	}{id, in}
 	return s.mutate(ctx, op, key, input, func(tx database.Tx) (any, error) {
 		w, err := database.Get[domain.Workflow](tx, "workflows", id)
 		if err != nil {
@@ -565,8 +572,8 @@ func NextRun(expression, zone string, now time.Time) (time.Time, error) {
 		return time.Time{}, invalid("invalid cron expression")
 	}
 	next := schedule.Next(now.In(loc))
-	if next.IsZero() || next.Sub(now) < time.Second {
-		return time.Time{}, invalid("schedule must have a future execution at least one second away")
+	if next.IsZero() || !next.After(now) {
+		return time.Time{}, invalid("schedule must have a future execution")
 	}
 	return next.UTC(), nil
 }
@@ -647,6 +654,9 @@ func (s *Service) JobAction(ctx context.Context, key, id string, in ScheduleActi
 			if j.Status != "dead" && j.Status != "cancelled" {
 				return nil, domain.ErrConflict
 			}
+			pending:=0
+			if err=database.Each[domain.Job](tx,"jobs",func(v domain.Job)error{if v.Status=="queued"||v.Status=="running"{pending++};return nil});err!=nil{return nil,err}
+			if pending>=tx.Tenant().Quotas.QueuedJobs{return nil,domain.ErrQuota}
 			j.Status = "queued"
 			j.Attempt = 0
 			j.DueAt = s.Now()
