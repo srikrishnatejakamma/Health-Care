@@ -2,6 +2,22 @@
 
 React 19 / TypeScript UI for the Go multi-tenant healthcare platform, implemented from `../Requirment UI.txt`. Uses Vite, Material UI, TanStack Query, Zustand, React Hook Form/Zod, Recharts, React Flow and FullCalendar.
 
+## Screenshots
+
+These screenshots show synthetic demo records.
+
+### Operations dashboard
+
+![Desktop operations dashboard with tenant selection, therapy metrics, activity chart and care pipeline](../docs/images/careflow-dashboard.png)
+
+### Dark theme
+
+![Dark operations dashboard showing therapy activity, care pipeline and upcoming appointments](../docs/images/careflow-dashboard-dark.png)
+
+### Mobile dashboard
+
+<img src="../docs/images/careflow-mobile.png" alt="Mobile operations dashboard with compact navigation, therapy metrics and activity chart" width="390" />
+
 ## Start locally
 
 Requires Node.js 22.12+ and npm. From the repository root:

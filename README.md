@@ -32,6 +32,10 @@ Token generation is an offline operator tool, not an HTTP endpoint. Tokens expir
 
 The [CareFlow portal](careflow-react-portal/README.md) implements the UI requirement with a responsive dashboard, tenant switching, patient/therapy workflows, appointment calendar, job scheduler, workflow drafts, monitoring and administration. It opens with synthetic demo records; use `/login` and a development token to connect to the Go API.
 
+![CareFlow desktop dashboard showing therapy activity, care pipeline and upcoming appointments](docs/images/careflow-dashboard.png)
+
+Screenshots show synthetic demo data. See the [portal screenshots](careflow-react-portal/README.md#screenshots) for dark-theme and mobile views.
+
 ```powershell
 Set-Location careflow-react-portal
 npm ci
