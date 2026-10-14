@@ -86,8 +86,10 @@ func (m *Memory) Membership(ctx context.Context, t, u string) (domain.Membership
 func (m *Memory) PutMembership(ctx context.Context, u domain.Membership) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, ok := m.tenants[u.TenantID]; !ok {
+	if tenant, ok := m.tenants[u.TenantID]; !ok {
 		return domain.ErrNotFound
+	} else if tenant.Status != "active" {
+		return domain.ErrInactive
 	}
 	u.Roles = append([]string(nil), u.Roles...)
 	u.Facilities = append([]string(nil), u.Facilities...)

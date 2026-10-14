@@ -161,6 +161,13 @@ func (p *Postgres) PutMembership(ctx context.Context, m domain.Membership) error
 		return err
 	}
 	defer tx.Rollback(ctx)
+	var tenantStatus string
+	if err = tx.QueryRow(ctx, `SELECT data->>'status' FROM tenants WHERE id=$1 FOR UPDATE`, m.TenantID).Scan(&tenantStatus); err != nil {
+		return pgError(err)
+	}
+	if tenantStatus != "active" {
+		return domain.ErrInactive
+	}
 	b, _ := json.Marshal(m)
 	_, err = tx.Exec(ctx, `INSERT INTO memberships(tenant_id,user_id,data) VALUES($1,$2,$3) ON CONFLICT(tenant_id,user_id) DO UPDATE SET data=EXCLUDED.data`, m.TenantID, m.UserID, b)
 	if err != nil {

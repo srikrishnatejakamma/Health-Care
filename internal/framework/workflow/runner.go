@@ -194,7 +194,7 @@ func (r *Runner) Execute(ctx context.Context, j domain.Job) error {
 		if err = database.Put(tx, "jobs", current.ID, current); err != nil {
 			return err
 		}
-		return r.Service.Emit(ctx, tx, "job.completed", current.ID)
+		return r.Service.Emit(ctx, tx, "job.completed", current.ID, current.Version)
 	})
 }
 func (r *Runner) fail(ctx context.Context, j domain.Job) error {
@@ -218,6 +218,6 @@ func (r *Runner) fail(ctx context.Context, j domain.Job) error {
 		if err = database.Put(tx, "jobs", current.ID, current); err != nil {
 			return err
 		}
-		return r.Service.Emit(ctx, tx, "job."+current.Status, current.ID)
+		return r.Service.Emit(ctx, tx, "job."+current.Status, current.ID, current.Version)
 	})
 }

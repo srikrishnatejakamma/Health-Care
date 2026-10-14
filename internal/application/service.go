@@ -36,7 +36,7 @@ func authorize(ctx context.Context, roles ...string) (tenancy.Scope, error) {
 	}
 	return s, nil
 }
-func (s *Service) Emit(ctx context.Context, tx database.Tx, action, id string) error {
+func (s *Service) Emit(ctx context.Context, tx database.Tx, action, id string, versions ...int) error {
 	scope, err := tenancy.From(ctx)
 	if err != nil {
 		return err
@@ -63,6 +63,9 @@ func (s *Service) Emit(ctx context.Context, tx database.Tx, action, id string) e
 	}
 	e := domain.Event{ID: domain.ID(), TenantID: scope.TenantID, Type: action, AggregateID: id, SchemaVersion: 1, ConfigurationVersion: tx.Tenant().Version, CorrelationID: scope.CorrelationID, OccurredAt: now}
 	e.Sequence = sequence.Value
+	if len(versions) > 0 {
+		e.ConfigurationVersion = versions[0]
+	}
 	return database.Put(tx, "outbox", e.ID, e)
 }
 
@@ -300,6 +303,13 @@ func (s *Service) Enqueue(tx database.Tx, kind, target string) error {
 		return domain.ErrQuota
 	}
 	j := domain.Job{ID: domain.ID(), TenantID: tx.Tenant().ID, Kind: kind, TargetID: target, Status: "queued", DueAt: s.Now(), MaxAttempts: 5, MemoryMB: 8, Version: tx.Tenant().Version}
+	if kind == "workflow.advance" {
+		w, err := database.Get[domain.Workflow](tx, "workflows", target)
+		if err != nil {
+			return err
+		}
+		j.Version = w.Version
+	}
 	return database.Put(tx, "jobs", j.ID, j)
 }
 
@@ -383,7 +393,7 @@ func (s *Service) recordOutcome(ctx context.Context, key, id string, in OutcomeI
 		if err = s.Enqueue(tx, "workflow.advance", w.ID); err != nil {
 			return nil, err
 		}
-		return w, s.Emit(ctx, tx, "workflow.outcome_recorded", w.ID)
+		return w, s.Emit(ctx, tx, "workflow.outcome_recorded", w.ID, w.Version)
 	})
 }
 
@@ -436,7 +446,7 @@ func (s *Service) Advance(ctx context.Context, tx database.Tx, id string) error 
 	if err = database.Put(tx, "workflows", w.ID, w); err != nil {
 		return err
 	}
-	return s.Emit(ctx, tx, "workflow."+w.Status, w.ID)
+	return s.Emit(ctx, tx, "workflow."+w.Status, w.ID, w.Version)
 }
 
 type AppointmentInput struct {
@@ -524,7 +534,7 @@ func (s *Service) CreateAppointment(ctx context.Context, key string, in Appointm
 		if err = database.Put(tx, "orders", o.ID, o); err != nil {
 			return nil, err
 		}
-		return a, s.Emit(ctx, tx, "appointment.confirmed", a.ID)
+		return a, s.Emit(ctx, tx, "appointment.confirmed", a.ID, w.Version)
 	})
 }
 func (s *Service) CancelWorkflow(ctx context.Context, key, id string) (json.RawMessage, error) {
@@ -540,7 +550,7 @@ func (s *Service) CancelWorkflow(ctx context.Context, key, id string) (json.RawM
 		if !scope.Facility(w.FacilityID) {
 			return nil, domain.ErrForbidden
 		}
-		if w.Status == "completed" || w.Status == "awaiting_billing" {
+		if w.Status == "completed" || w.Status == "awaiting_billing" || w.Outcomes["administration"] == "completed" {
 			return nil, domain.ErrConflict
 		}
 		if err = database.Each[domain.Appointment](tx, "appointments", func(a domain.Appointment) error {
@@ -566,7 +576,7 @@ func (s *Service) CancelWorkflow(ctx context.Context, key, id string) (json.RawM
 		if err = database.Put(tx, "workflows", w.ID, w); err != nil {
 			return nil, err
 		}
-		return w, s.Emit(ctx, tx, "workflow.cancelled", w.ID)
+		return w, s.Emit(ctx, tx, "workflow.cancelled", w.ID, w.Version)
 	})
 }
 
@@ -720,6 +730,18 @@ type Page struct {
 	NextCursor string            `json:"next_cursor,omitempty"`
 }
 
+func clinicalRead(kind string) bool {
+	return kind == "patients" || kind == "orders" || kind == "workflows" || kind == "appointments"
+}
+func (s *Service) auditRead(ctx context.Context, tx database.Tx, kind, id string) error {
+	scope, err := tenancy.From(ctx)
+	if err != nil {
+		return err
+	}
+	a := domain.Audit{ID: domain.ID(), TenantID: scope.TenantID, Actor: scope.Actor, Action: kind + ".read", ResourceID: id, CorrelationID: scope.CorrelationID, At: s.Now()}
+	return database.Put(tx, "audit", a.ID, a)
+}
+
 func (s *Service) List(ctx context.Context, kind, after string, limit int) (Page, error) {
 	scope, err := authorize(ctx, readRoles[kind]...)
 	if err != nil {
@@ -729,7 +751,11 @@ func (s *Service) List(ctx context.Context, kind, after string, limit int) (Page
 		return Page{}, invalid("limit must be between 1 and 100")
 	}
 	p := Page{Items: []json.RawMessage{}}
-	err = s.Store.View(ctx, func(tx database.Tx) error {
+	read := s.Store.View
+	if clinicalRead(kind) {
+		read = s.Store.Atomic
+	}
+	err = read(ctx, func(tx database.Tx) error {
 		rows, err := tx.List(kind, after, limit)
 		if err != nil {
 			return err
@@ -752,6 +778,9 @@ func (s *Service) List(ctx context.Context, kind, after string, limit int) (Page
 				p.NextCursor = last.EventID
 			}
 		}
+		if clinicalRead(kind) {
+			return s.auditRead(ctx, tx, kind, "collection")
+		}
 		return nil
 	})
 	return p, err
@@ -762,7 +791,11 @@ func (s *Service) Get(ctx context.Context, kind, id string) (json.RawMessage, er
 		return nil, err
 	}
 	var b json.RawMessage
-	err = s.Store.View(ctx, func(tx database.Tx) error {
+	read := s.Store.View
+	if clinicalRead(kind) {
+		read = s.Store.Atomic
+	}
+	err = read(ctx, func(tx database.Tx) error {
 		var err error
 		b, err = tx.Get(kind, id)
 		if err != nil {
@@ -770,6 +803,9 @@ func (s *Service) Get(ctx context.Context, kind, id string) (json.RawMessage, er
 		}
 		if !readable(scope, kind, b) {
 			return domain.ErrNotFound
+		}
+		if clinicalRead(kind) {
+			return s.auditRead(ctx, tx, kind, id)
 		}
 		return nil
 	})

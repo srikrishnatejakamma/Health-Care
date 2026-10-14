@@ -4,7 +4,7 @@ Multi-tenant healthcare integration and workflow platform in Go, implemented fro
 
 ## Run locally
 
-Requires Go 1.25 or later. In PowerShell:
+Requires Go 1.26 or later (the Go launcher downloads the configured toolchain when permitted). In PowerShell:
 
 ```powershell
 .\scripts\dev.ps1
@@ -62,7 +62,7 @@ For a native API using Compose PostgreSQL, set `STORE=postgres` and `DATABASE_UR
 | Interoperability | REST; authenticated gRPC patient/workflow reads; read-only FHIR Patient/Bundle subset. |
 | Database adapters | PostgreSQL primary store; reusable SQL Server billing, MongoDB metadata and tenant-scoped Redis TTL cache repositories. |
 | Resilience | Tenant-specific integration circuits, safe HTTP retries, bounded requests/responses, context cancellation and graceful shutdown. |
-| Operations | JSON logs, aggregate Prometheus metrics, health probes, non-root Docker image, Kubernetes HPA/PDB examples, CI and integration tests. |
+| Operations | JSON logs, clinical read/mutation audits, aggregate Prometheus metrics, health probes, non-root Docker image, Kubernetes HPA/PDB examples, CI and integration tests. |
 
 Insurance, medication readiness and clinical clearance are explicitly recorded outcomes; transport success does not imply approval. Staff qualification records represent authorized input rather than independent credential verification. Billing records submission state and does not submit a real payer claim. Optional database repositories are integration components; the API does not automatically synchronize them with PostgreSQL.
 
@@ -124,6 +124,7 @@ Offsets commit only after the outcome/inbox transaction succeeds or DLQ delivery
 go test ./...
 go vet ./...
 go build ./cmd/...
+go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 docker compose --profile test run --rm test
 ```
 

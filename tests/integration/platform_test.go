@@ -434,3 +434,83 @@ func TestTenantRateLimit(t *testing.T) {
 		t.Fatal("one tenant exhausted another tenant's request budget")
 	}
 }
+
+func TestWorkflowConfigurationRemainsPinned(t *testing.T) {
+	f := setup(t)
+	c := prepare(t, f)
+	f.drain(t)
+	tenant, err := f.store.Tenant(context.Background(), "north-health")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tenant.Version++
+	if err = f.store.UpdateTenant(context.Background(), tenant); err != nil {
+		t.Fatal(err)
+	}
+	call[domain.Workflow](t, f, "POST", "/api/v1/workflows/"+c.order.WorkflowID+"/outcomes", f.north, "pinned", application.OutcomeInput{Step: "insurance", Outcome: "approved"}, 200)
+	ctx := tenancy.Worker(context.Background(), "north-health")
+	job, err := f.runner.Claim(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if job.Version != 1 {
+		t.Fatal("active workflow silently changed configuration version", job.Version)
+	}
+	if err = f.runner.Execute(ctx, job); err != nil {
+		t.Fatal(err)
+	}
+	page := call[application.Page](t, f, "GET", "/api/v1/events", f.north, "", nil, 200)
+	found := false
+	for _, b := range page.Items {
+		var e domain.Event
+		if err = json.Unmarshal(b, &e); err != nil {
+			t.Fatal(err)
+		}
+		if e.Type == "workflow.outcome_recorded" {
+			found = true
+			if e.ConfigurationVersion != 1 {
+				t.Fatal("workflow event lost original configuration version")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("missing outcome event")
+	}
+}
+func TestAdministrationCannotBeCancelledBeforeWorkerAdvances(t *testing.T) {
+	f := setup(t)
+	c := prepare(t, f)
+	approve(t, f, c.order.WorkflowID)
+	start := time.Now().Add(time.Hour).UTC()
+	call[domain.Appointment](t, f, "POST", "/api/v1/appointments", f.north, "appointment", application.AppointmentInput{OrderID: c.order.ID, NurseID: c.staff.ID, ResourceID: c.resource.ID, StartsAt: start, EndsAt: start.Add(time.Hour)}, 201)
+	call[domain.Workflow](t, f, "POST", "/api/v1/workflows/"+c.order.WorkflowID+"/outcomes", f.north, "administer", application.OutcomeInput{Step: "administration", Outcome: "completed"}, 200)
+	status, _ := f.call("POST", "/api/v1/workflows/"+c.order.WorkflowID+"/cancel", f.north, "cancel", nil)
+	if status != 409 {
+		t.Fatal("recorded administration was cancelled before billing")
+	}
+	f.drain(t)
+	w := call[domain.Workflow](t, f, "GET", "/api/v1/workflows/"+c.order.WorkflowID, f.north, "", nil, 200)
+	if w.Status != "awaiting_billing" {
+		t.Fatal(w.Status)
+	}
+}
+
+func TestClinicalReadsAreAudited(t *testing.T) {
+	f := setup(t)
+	c := prepare(t, f)
+	call[domain.Patient](t, f, "GET", "/api/v1/patients/"+c.patient.ID, f.north, "", nil, 200)
+	page := call[application.Page](t, f, "GET", "/api/v1/audit", f.north, "", nil, 200)
+	for _, b := range page.Items {
+		var a domain.Audit
+		if err := json.Unmarshal(b, &a); err != nil {
+			t.Fatal(err)
+		}
+		if a.Action == "patients.read" && a.ResourceID == c.patient.ID {
+			if a.Actor != "north-admin" || a.CorrelationID == "" {
+				t.Fatal("incomplete access audit")
+			}
+			return
+		}
+	}
+	t.Fatal("clinical read returned without an access audit")
+}

@@ -1,0 +1,817 @@
+REACTJS ENTERPRISE HEALTHCARE MANAGEMENT PORTAL
+COMPLETE UI APPLICATION DEVELOPMENT PLAN
+
+PROJECT NAME: CareFlow Enterprise
+BUSINESS DOMAIN: Option Care Health–Inspired Infusion Therapy Platform
+FRONTEND: ReactJS, TypeScript, Vite, Material UI, TanStack Query, Zustand
+BACKEND: Golang Healthcare Integration and Workflow Orchestration Framework
+DATABASES: PostgreSQL, SQL Server, MongoDB, Redis
+MESSAGING: Kafka
+DEPLOYMENT: Docker, Kubernetes, AWS
+
+NOTE: This is a proposed reference application, not a verified description of Option Care Health's internal systems.
+
+1. PROJECT OVERVIEW
+
+CareFlow Enterprise is a centralized ReactJS healthcare management portal designed to integrate with a Golang backend framework.
+
+The application provides healthcare operations, workflow orchestration, job scheduling, patient and therapy management, insurance, pharmacy, billing, multi-database monitoring, concurrency management, memory monitoring, Kafka event tracking, callbacks, and runtime configuration.
+
+The frontend is designed as a scalable, responsive, secure, modular, and metadata-driven enterprise application.
+
+2. UI DESIGN REQUIREMENTS
+
+- Modern enterprise healthcare dashboard.
+- Professional blue, white, and neutral color scheme.
+- Responsive desktop, tablet, and mobile layouts.
+- Collapsible left navigation sidebar.
+- Top navigation with search, notifications, user profile, and environment.
+- Role-based navigation and permission-aware controls.
+- Reusable data tables, filters, charts, forms, and dialogs.
+- Dark and light theme support.
+- Loading skeletons and error boundaries.
+- Accessibility aligned with WCAG 2.2 AA.
+- Real-time updates using Server-Sent Events or WebSockets.
+- Confirmation dialogs for sensitive operations.
+- Audit trails for configuration and operational changes.
+- Protected display of healthcare information.
+
+3. FRONTEND TECHNOLOGY STACK
+
+ReactJS with TypeScript
+Vite
+Material UI
+React Router
+TanStack Query
+Zustand
+React Hook Form
+Zod
+Recharts
+React Flow (@xyflow/react)
+FullCalendar
+MUI Data Grid
+Axios or typed Fetch
+Server-Sent Events / WebSockets
+OIDC Authentication
+Vitest
+React Testing Library
+Playwright
+ESLint
+Prettier
+Docker
+Kubernetes
+
+4. APPLICATION NAVIGATION
+
+Dashboard
+
+Healthcare Management
+  - Patients
+  - Therapy Orders
+  - Prescriptions
+  - Insurance Authorization
+  - Pharmacy Inventory
+  - Appointment Scheduling
+  - Billing and Claims
+
+Workflow Management
+  - Workflow Designer
+  - Workflow Definitions
+  - Workflow Executions
+  - Workflow History
+  - Failed Workflows
+
+Job Scheduler
+  - Scheduled Jobs
+  - Create Job
+  - Cron Configuration
+  - Execution History
+  - Failed Jobs
+  - Retry Management
+
+Infrastructure Monitoring
+  - Database Connections
+  - Worker Pools
+  - Concurrency Monitoring
+  - Memory Monitoring
+  - Kafka Monitoring
+  - Callback Monitoring
+  - System Health
+
+Administration
+  - Runtime Configuration
+  - Feature Flags
+  - Users and Roles
+  - Security
+  - Audit Logs
+  - Alerts and Notifications
+
+5. DASHBOARD MODULE
+
+Dashboard features:
+- Total active therapy orders.
+- Scheduled appointments.
+- Pending insurance authorizations.
+- Active workflows.
+- Workflow success and failure rates.
+- Scheduled job status.
+- Worker pool utilization.
+- Memory usage.
+- Database health.
+- Kafka consumer lag.
+- Recent activities.
+- Operational alerts.
+
+Dashboard components:
+- KPI cards.
+- Line charts.
+- Bar charts.
+- Donut charts.
+- Status badges.
+- Recent activity table.
+- Alert panel.
+- Environment selector.
+- Date range filter.
+- Facility filter.
+- Refresh controls.
+
+6. PATIENT MANAGEMENT MODULE
+
+Features:
+- Authorized patient search.
+- Patient registration.
+- Patient profile.
+- Demographic information.
+- Therapy history.
+- Prescription details.
+- Insurance information.
+- Appointment history.
+- Clinical document references.
+- Billing status.
+- Audit history.
+
+Screens:
+- Patient List.
+- Patient Details.
+- Patient Registration.
+- Patient Edit.
+- Therapy History.
+- Patient Audit Timeline.
+
+Sensitive data must be displayed only to authorized users.
+
+7. THERAPY MANAGEMENT MODULE
+
+Features:
+- Therapy order creation.
+- Prescription validation status.
+- Therapy lifecycle tracking.
+- Order status updates.
+- Workflow association.
+- Medication readiness.
+- Insurance authorization status.
+- Scheduling eligibility.
+- Exception management.
+- Therapy execution history.
+
+Screens:
+- Therapy Order List.
+- Create Therapy Order.
+- Therapy Details.
+- Therapy Status Timeline.
+- Exception Review.
+
+8. INSURANCE AUTHORIZATION MODULE
+
+Features:
+- Authorization requests.
+- Payer integration status.
+- Pending authorizations.
+- Approved and denied statuses.
+- Retry and escalation.
+- Authorization history.
+- Workflow correlation.
+- Error reporting.
+
+Screens:
+- Authorization Dashboard.
+- Authorization List.
+- Authorization Details.
+- Pending Review.
+- Integration Exceptions.
+
+9. PHARMACY MANAGEMENT MODULE
+
+Features:
+- Medication inventory.
+- Inventory availability.
+- Stock reconciliation.
+- Pharmacy readiness.
+- Medication preparation status.
+- Integration synchronization.
+- Inventory alerts.
+- Exception handling.
+
+Screens:
+- Inventory Dashboard.
+- Medication List.
+- Inventory Reconciliation.
+- Pharmacy Integration Status.
+
+10. APPOINTMENT SCHEDULING MODULE
+
+Features:
+- Calendar views.
+- Patient availability.
+- Nurse availability.
+- Infusion chair availability.
+- Appointment duration.
+- Facility capacity.
+- Authorization prerequisites.
+- Medication readiness.
+- Conflict detection.
+- Appointment confirmation.
+- Rescheduling.
+- Cancellation.
+- Reminder configuration.
+
+Screens:
+- Appointment Calendar.
+- Appointment Booking.
+- Staff Availability.
+- Facility Capacity.
+- Appointment Details.
+- Scheduling Exceptions.
+
+Clinical scheduling rules require approved policies and professional oversight.
+
+11. BILLING AND CLAIMS MODULE
+
+Features:
+- Billing records.
+- Claims processing status.
+- Insurance claim tracking.
+- Payment reconciliation.
+- Failed billing events.
+- Billing workflow history.
+- Exception management.
+- Financial integration monitoring.
+
+Screens:
+- Billing Dashboard.
+- Claims List.
+- Claim Details.
+- Reconciliation Dashboard.
+- Failed Transactions.
+
+12. VISUAL WORKFLOW DESIGNER
+
+Use React Flow for a drag-and-drop workflow editor.
+
+Features:
+- Add workflow nodes.
+- Connect workflow steps.
+- Configure step handlers.
+- Define dependencies.
+- Conditional branches.
+- Parallel execution.
+- Retry configuration.
+- Timeout configuration.
+- Compensation configuration.
+- Callback configuration.
+- Workflow validation.
+- Draft and published versions.
+- Workflow version comparison.
+- Workflow preview.
+- Save and publish with approval.
+
+Example workflow:
+Order Received
+  -> Patient Validation
+  -> Prescription Validation
+  -> Parallel Insurance and Inventory Checks
+  -> Scheduling Eligibility
+  -> Appointment Confirmation
+  -> Billing
+  -> Reconciliation
+
+13. WORKFLOW MONITORING MODULE
+
+Features:
+- Active workflow executions.
+- Completed workflows.
+- Failed workflows.
+- Workflow state visualization.
+- Step execution history.
+- Duration tracking.
+- Error details.
+- Retry history.
+- Compensation tracking.
+- Workflow correlation IDs.
+- Authorized replay and recovery.
+- Audit timeline.
+
+14. JOB SCHEDULER MODULE
+
+Features:
+- Create scheduled jobs.
+- Cron scheduling.
+- Interval scheduling.
+- One-time scheduling.
+- Delayed scheduling.
+- Event-triggered scheduling.
+- Dependency-based scheduling.
+- Timezone configuration.
+- Holiday calendar support.
+- Priority configuration.
+- Maximum concurrency.
+- Job timeout.
+- Retry attempts.
+- Backoff configuration.
+- Memory budget.
+- Database connection budget.
+- Pause and resume.
+- Manual execution.
+- Cancellation.
+- Execution history.
+- Job logs.
+- Failure alerts.
+- Versioned configuration.
+
+Screens:
+- Scheduler Dashboard.
+- Job List.
+- Create Job.
+- Edit Job.
+- Job Details.
+- Job Execution History.
+- Failed Jobs.
+- Scheduler Configuration.
+
+15. CONCURRENCY MANAGEMENT MODULE
+
+Features:
+- Active worker count.
+- Configured minimum and maximum workers.
+- Worker pool utilization.
+- Queue depth.
+- Pending jobs.
+- Running jobs.
+- Failed jobs.
+- Worker scaling controls.
+- Adaptive concurrency status.
+- Per-service quotas.
+- Per-tenant quotas.
+- Backpressure status.
+- Worker throughput.
+- Worker execution duration.
+- Downstream latency.
+- Graceful shutdown status.
+
+Screens:
+- Concurrency Dashboard.
+- Worker Pool Details.
+- Worker Configuration.
+- Queue Monitoring.
+- Adaptive Controller.
+
+16. MEMORY MANAGEMENT MODULE
+
+Features:
+- Heap usage.
+- Memory utilization.
+- Runtime memory limit.
+- Garbage collection metrics.
+- GC pause duration.
+- Allocation rate.
+- Goroutine count.
+- Buffer pool statistics where instrumented.
+- Estimated memory reservations.
+- Memory pressure alerts.
+- Batch processing metrics.
+- Memory profiling access.
+- Historical memory charts.
+- Resource budget configuration.
+
+Screens:
+- Memory Dashboard.
+- Heap Metrics.
+- Garbage Collection Monitoring.
+- Memory Configuration.
+- Resource Governor.
+
+17. DATABASE MANAGEMENT MODULE
+
+Supported systems:
+- PostgreSQL.
+- SQL Server.
+- MongoDB.
+- Redis.
+
+Features:
+- Database connection status.
+- Connection pool utilization.
+- Active connections.
+- Idle connections.
+- Query latency.
+- Failed queries.
+- Timeout metrics.
+- Circuit breaker state.
+- Connection health.
+- Database-specific performance.
+- Connection configuration.
+- Read/write routing status.
+- Synchronization status.
+- Reconciliation alerts.
+
+Screens:
+- Database Overview.
+- Connection Details.
+- Pool Monitoring.
+- Query Performance.
+- Integration Health.
+
+The browser must never connect directly to production databases.
+
+18. KAFKA MONITORING MODULE
+
+Features:
+- Kafka topics.
+- Consumer groups.
+- Consumer lag.
+- Partition information.
+- Message throughput.
+- Failed messages.
+- Retry queues.
+- Dead-letter queues.
+- Event delivery status.
+- Event schema version.
+- Message correlation IDs.
+- Authorized event replay.
+- Kafka integration alerts.
+
+Screens:
+- Kafka Dashboard.
+- Topic Details.
+- Consumer Group Details.
+- Dead Letter Queue.
+- Event Delivery History.
+
+19. CALLBACK MANAGEMENT MODULE
+
+Features:
+- Registered callback handlers.
+- Event subscriptions.
+- Callback execution status.
+- Callback success and failure counts.
+- Delivery attempts.
+- Timeout information.
+- Retry configuration.
+- Callback versioning.
+- Webhook status.
+- Event correlation.
+- Callback audit history.
+
+Screens:
+- Callback Registry.
+- Callback Details.
+- Delivery History.
+- Failed Callbacks.
+
+20. CONFIGURATION MANAGEMENT MODULE
+
+Features:
+- Centralized configuration.
+- Runtime settings.
+- Feature flags.
+- Job policies.
+- Worker limits.
+- Memory budgets.
+- Database pool settings.
+- Retry policies.
+- Circuit breaker policies.
+- Workflow templates.
+- Integration endpoints.
+- Tenant quotas.
+- Configuration versioning.
+- Validation.
+- Approval workflows.
+- Rollback.
+- Audit logs.
+
+21. ALERTS AND NOTIFICATIONS
+
+Features:
+- System health alerts.
+- Failed job alerts.
+- Workflow failure alerts.
+- Database connection alerts.
+- Memory pressure alerts.
+- Kafka lag alerts.
+- Callback failure alerts.
+- Insurance exception alerts.
+- Scheduling exception alerts.
+- Alert acknowledgment.
+- Severity classification.
+- Escalation history.
+- Notification preferences.
+
+22. SECURITY AND ACCESS CONTROL
+
+Roles:
+- Platform Administrator.
+- Healthcare Operations.
+- Clinical Staff.
+- Pharmacy Operations.
+- Billing Specialist.
+- Integration Engineer.
+- Support Analyst.
+- Auditor.
+
+Features:
+- OIDC authentication.
+- Secure session management.
+- Role-based navigation.
+- Permission-aware actions.
+- Backend-enforced authorization.
+- Patient-level access controls.
+- Facility-level access controls.
+- Audit logging.
+- Session expiration.
+- Sensitive data masking.
+- Secure error messages.
+- CSRF protection where cookie authentication is used.
+
+23. FRONTEND ARCHITECTURE
+
+React Application
+  |
+  |-- Routing and Layout
+  |-- Authentication and Authorization UI
+  |-- Feature Modules
+  |-- Reusable UI Components
+  |-- Form Validation
+  |-- Client State Management
+  |-- Server State Management
+  |-- API Client
+  |-- Real-Time Event Client
+  |
+  v
+Golang Backend API / BFF
+  |
+  |-- Healthcare Domain Services
+  |-- Scheduler
+  |-- Workflow Engine
+  |-- Database Manager
+  |-- Concurrency Manager
+  |-- Memory Manager
+  |-- Kafka
+  |-- Callback Registry
+
+24. REACT PROJECT STRUCTURE
+
+careflow-react-portal/
+  public/
+  src/
+    app/
+      App.tsx
+      router.tsx
+      providers.tsx
+      theme.ts
+
+    layouts/
+      MainLayout.tsx
+      Sidebar.tsx
+      Header.tsx
+      Breadcrumbs.tsx
+
+    features/
+      auth/
+      dashboard/
+      patients/
+      therapy/
+      insurance/
+      pharmacy/
+      appointments/
+      billing/
+      workflows/
+        components/
+        pages/
+        hooks/
+        api/
+      scheduler/
+      databases/
+      concurrency/
+      memory/
+      callbacks/
+      kafka/
+      configuration/
+      alerts/
+      audit/
+
+    shared/
+      components/
+        DataTable/
+        StatusBadge/
+        MetricCard/
+        ConfirmDialog/
+        ErrorState/
+        LoadingState/
+      hooks/
+      utils/
+      types/
+
+    services/
+      apiClient.ts
+      realtime.ts
+      authClient.ts
+
+    stores/
+    styles/
+    test/
+    main.tsx
+
+  Dockerfile
+  nginx.conf
+  vite.config.ts
+  tsconfig.json
+  package.json
+  README.md
+
+25. GOLANG API INTEGRATION
+
+GET    /api/v1/dashboard/summary
+
+GET    /api/v1/patients
+GET    /api/v1/patients/{id}
+POST   /api/v1/patients
+
+GET    /api/v1/therapy-orders
+POST   /api/v1/therapy-orders
+
+GET    /api/v1/authorizations
+GET    /api/v1/appointments
+POST   /api/v1/appointments
+
+GET    /api/v1/workflows
+POST   /api/v1/workflows
+POST   /api/v1/workflows/{id}/execute
+
+GET    /api/v1/jobs
+POST   /api/v1/jobs
+PATCH  /api/v1/jobs/{id}
+POST   /api/v1/jobs/{id}/pause
+POST   /api/v1/jobs/{id}/resume
+POST   /api/v1/jobs/{id}/run
+GET    /api/v1/jobs/{id}/executions
+
+GET    /api/v1/platform/databases
+GET    /api/v1/platform/workers
+GET    /api/v1/platform/memory
+GET    /api/v1/platform/events
+
+GET    /api/v1/callbacks
+GET    /api/v1/configuration
+PATCH  /api/v1/configuration
+GET    /api/v1/audit-events
+
+These are proposed endpoints and should be formalized using OpenAPI.
+
+26. REAL-TIME COMMUNICATION
+
+Use SSE or WebSockets for:
+- Workflow status updates.
+- Job execution progress.
+- Queue depth.
+- Worker pool metrics.
+- Memory metrics.
+- Kafka consumer lag.
+- Database health changes.
+- Operational alerts.
+
+Implement reconnect handling, authorization, event filtering, and bounded client-side buffering.
+
+27. REUSABLE UI COMPONENTS
+
+- Application Shell.
+- Navigation Sidebar.
+- Page Header.
+- Breadcrumbs.
+- Metric Card.
+- Status Badge.
+- Data Table.
+- Filter Toolbar.
+- Date Range Picker.
+- Cron Expression Editor.
+- Workflow Canvas.
+- Workflow Node.
+- Job Configuration Form.
+- Worker Pool Chart.
+- Memory Utilization Chart.
+- Database Health Card.
+- Kafka Lag Chart.
+- Alert Drawer.
+- Audit Timeline.
+- Confirmation Dialog.
+- Loading Skeleton.
+- Error Boundary.
+- Empty State.
+- Permission Guard.
+
+28. PERFORMANCE OPTIMIZATION
+
+- Route-based lazy loading.
+- Code splitting.
+- TanStack Query caching.
+- Request deduplication.
+- Virtualized tables.
+- Server-side pagination.
+- Debounced search.
+- Memoized expensive components.
+- Efficient real-time subscriptions.
+- Chart data aggregation.
+- Avoid unnecessary rerenders.
+- Minimize sensitive data in client memory.
+- Cancel stale API requests.
+
+29. TESTING STRATEGY
+
+- Vitest unit tests.
+- React Testing Library component tests.
+- Playwright end-to-end tests.
+- API contract tests.
+- Accessibility testing.
+- Permission testing.
+- Error handling tests.
+- Real-time reconnect tests.
+- Large data table performance tests.
+- Security validation.
+- Responsive layout tests.
+
+30. IMPLEMENTATION ROADMAP
+
+PHASE 1 – WEEKS 1–2
+React setup, TypeScript, Material UI, routing, authentication, application layout, API client.
+
+PHASE 2 – WEEKS 3–4
+Dashboard, patient management, therapy, insurance, pharmacy screens.
+
+PHASE 3 – WEEKS 5–6
+Job scheduler, workflow designer, workflow monitoring, appointment calendar.
+
+PHASE 4 – WEEKS 7–8
+Database console, concurrency manager, memory monitor, Kafka monitor, callback registry.
+
+PHASE 5 – WEEK 9
+Configuration, feature flags, users, roles, audit logs, notifications.
+
+PHASE 6 – WEEK 10
+Unit testing, E2E testing, accessibility, performance, security hardening, Docker and Kubernetes deployment.
+
+The timeline is illustrative and assumes an experienced team and available backend contracts.
+
+31. RELEASE STRATEGY
+
+RELEASE 1 – OPERATIONAL MVP
+- Authentication.
+- Dashboard.
+- Job Scheduler.
+- Workflow Monitoring.
+- Database Health.
+- Concurrency Monitoring.
+- Memory Monitoring.
+- Kafka Events.
+- Audit Logging.
+
+RELEASE 2 – HEALTHCARE OPERATIONS
+- Patient Management.
+- Therapy Orders.
+- Insurance Authorization.
+- Pharmacy Integration.
+- Clinical Appointment Scheduling.
+- Billing and Claims.
+- Visual Workflow Customization.
+
+32. EXPECTED BUSINESS VALUE
+
+- Centralized visibility into healthcare operations.
+- Reduced manual monitoring.
+- Configurable job scheduling.
+- Improved workflow traceability.
+- Better integration exception handling.
+- Visibility into database and runtime performance.
+- Controlled resource management.
+- Faster operational troubleshooting.
+- Reusable UI architecture.
+- Secure and auditable healthcare workflows.
+- Scalable frontend integration with Golang services.
+
+FINAL RECOMMENDATION
+
+Build CareFlow Enterprise as a modular, metadata-driven ReactJS application using TypeScript, Material UI, TanStack Query, React Flow, and reusable enterprise components.
+
+Prioritize the dashboard, workflow monitoring, distributed scheduler, concurrency management, memory monitoring, and database integration console in the first release.
+
+Extend the application with patient, therapy, insurance, pharmacy, appointment scheduling, and billing modules in the second release.
+
+The resulting solution will demonstrate enterprise ReactJS architecture integrated with advanced Golang backend capabilities.

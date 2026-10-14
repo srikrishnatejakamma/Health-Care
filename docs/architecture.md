@@ -54,7 +54,7 @@ Inbound outcome application and inbox result share a transaction. Reusing an eve
 | Scheduling | One-time/delayed/dependency/priority APIs, holidays, home-care travel, rescheduling and reminders. |
 | Resources | Metric-driven adaptive concurrency, service objectives, connection-budget feedback and large-volume profiling. |
 | Interoperability | Approved payer/pharmacy/EHR contracts, prescription checks, real claims/reconciliation, full FHIR, HL7 v2, secure files and CDC. |
-| Security | OIDC discovery/JWKS rotation, mTLS, consent policies, exceptional support access, object storage, comprehensive read auditing, retention and key management. |
+| Security | OIDC discovery/JWKS rotation, mTLS, consent policies, exceptional support access, object storage, denied-access monitoring, retention and key management. |
 | Operations | OpenTelemetry/Grafana, complete latency/lag metrics, tenant reports, profiling, alerts, load/soak/chaos/security and disaster-recovery validation. |
 
 No external healthcare accounts are configured. Provider-specific submissions require organization contracts, service identities, schemas and approved rules.

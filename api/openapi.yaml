@@ -23,6 +23,137 @@ paths:
     get:
       responses:
         '200': {description: Current authorized tenant and membership}
+  /metrics:
+    get:
+      security: []
+      responses:
+        '200': {description: Prometheus aggregate metrics}
+  /api/v1/memberships/{user}:
+    parameters:
+      - name: user
+        in: path
+        required: true
+        schema: {type: string, maxLength: 200}
+    put:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roles, facilities, active]
+              additionalProperties: false
+              properties:
+                roles:
+                  type: array
+                  items: {type: string, enum: [tenant_admin, clinical, billing, auditor, integration]}
+                facilities:
+                  type: array
+                  items: {type: string, description: Facility ID or '*' for all tenant facilities}
+                active: {type: boolean}
+      responses:
+        '200': {description: Tenant membership updated; tenant administrator only}
+  /api/v1/staff:
+    get:
+      responses:
+        '200': {description: Authorized staff page}
+    post:
+      parameters:
+        - {$ref: '#/components/parameters/Idempotency'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [facility_id, name, qualifications]
+              additionalProperties: false
+              properties:
+                facility_id: {type: string}
+                name: {type: string}
+                qualifications: {type: array, items: {type: string}, example: [infusion]}
+      responses:
+        '201': {description: Active staff record created}
+  /api/v1/care-resources:
+    get:
+      responses:
+        '200': {description: Authorized resource page}
+    post:
+      parameters:
+        - {$ref: '#/components/parameters/Idempotency'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [facility_id, name, kind]
+              additionalProperties: false
+              properties:
+                facility_id: {type: string}
+                name: {type: string}
+                kind: {type: string, enum: [chair, room]}
+      responses:
+        '201': {description: Care resource created}
+  /api/v1/{collection}:
+    parameters:
+      - {$ref: '#/components/parameters/Collection'}
+    get:
+      parameters:
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+        - name: after
+          in: query
+          schema: {type: string}
+      responses:
+        '200': {description: Authorized collection page with items and optional next_cursor}
+  /api/v1/{collection}/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/Collection'}
+      - {$ref: '#/components/parameters/ID'}
+    get:
+      responses:
+        '200': {description: Authorized resource}
+        '404': {description: Missing or unauthorized resource}
+  /api/v1/schedules/{id}/actions:
+    parameters:
+      - {$ref: '#/components/parameters/ID'}
+      - {$ref: '#/components/parameters/Idempotency'}
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              additionalProperties: false
+              properties:
+                action: {type: string, enum: [pause, resume, trigger]}
+      responses:
+        '200': {description: Schedule action recorded}
+  /api/v1/jobs/{id}/actions:
+    parameters:
+      - {$ref: '#/components/parameters/ID'}
+      - {$ref: '#/components/parameters/Idempotency'}
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              additionalProperties: false
+              properties:
+                action: {type: string, enum: [cancel, retry]}
+      responses:
+        '200': {description: Job action recorded}
+  /fhir/Patient:
+    get:
+      responses:
+        '200': {description: FHIR search Bundle subset using limit and after query parameters}
   /api/v1/platform/tenants:
     get:
       responses:
@@ -217,6 +348,13 @@ components:
       scheme: bearer
       bearerFormat: JWT
   parameters:
+    Collection:
+      name: collection
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [facilities, staff, care-resources, patients, orders, workflows, appointments, jobs, schedules, audit, events]
     ID:
       name: id
       in: path
