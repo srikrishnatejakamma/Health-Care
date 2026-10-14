@@ -1,0 +1,114 @@
+name: healthcare-framework
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: healthcare
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: local-admin-password
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./deployments/docker/init-runtime.sh:/docker-entrypoint-initdb.d/01-runtime.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d healthcare"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  migrate:
+    build: .
+    entrypoint: ["/app/migrate"]
+    environment:
+      MIGRATION_DATABASE_URL: postgres://postgres:local-admin-password@postgres:5432/healthcare?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+  api:
+    build: .
+    environment:
+      APP_ENV: development
+      HTTP_ADDR: 0.0.0.0:8080
+      GRPC_ADDR: 0.0.0.0:9090
+      STORE: postgres
+      DATABASE_URL: postgres://healthcare_app:local-app-password@postgres:5432/healthcare?sslmode=disable
+      AUTH_KEY: ${AUTH_KEY:?Run scripts/dev.ps1 -ConfigureOnly to generate .env}
+      AUTH_ISSUER: healthcare-local
+      AUTH_AUDIENCE: healthcare-api
+      DEMO_SEED: "true"
+      WORKER_ENABLED: "true"
+      GOMEMLIMIT: 384MiB
+      MEMORY_BUDGET_MB: "256"
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+  kafka:
+    image: docker.redpanda.com/redpandadata/redpanda:v25.2.1
+    profiles: [events]
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=512M
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --node-id=0
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://kafka:9092,external://localhost:19092
+      - --rpc-addr=0.0.0.0:33145
+      - --advertise-rpc-addr=kafka:33145
+    ports:
+      - "127.0.0.1:19092:19092"
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "info", "--brokers", "localhost:9092"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - kafka-data:/var/lib/redpanda/data
+  kafka-init:
+    image: docker.redpanda.com/redpandadata/redpanda:v25.2.1
+    profiles: [events]
+    entrypoint: [rpk]
+    command: [topic, create, healthcare.events, healthcare.outcomes, healthcare.outcomes.dlq, --brokers, "kafka:9092"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+  integration-worker:
+    build: .
+    profiles: [events]
+    entrypoint: ["/app/integration-worker"]
+    environment:
+      APP_ENV: development
+      STORE: postgres
+      DATABASE_URL: postgres://healthcare_app:local-app-password@postgres:5432/healthcare?sslmode=disable
+      AUTH_KEY: ${AUTH_KEY:?Generate .env first}
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: healthcare.events
+      # Set KAFKA_INPUT_TOPIC and register service memberships to enable inbound outcomes.
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+  redis:
+    image: redis:7.4-alpine
+    profiles: [databases]
+    ports:
+      - "127.0.0.1:56379:6379"
+  mongodb:
+    image: mongo:8.0
+    profiles: [databases]
+    ports:
+      - "127.0.0.1:57017:27017"
+    volumes:
+      - mongo-data:/data/db
+volumes:
+  postgres-data:
+  kafka-data:
+  mongo-data:

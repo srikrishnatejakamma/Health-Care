@@ -1,0 +1,7 @@
+.git
+.env
+bin
+data
+*.log
+coverage.out
+Requirment.txt
