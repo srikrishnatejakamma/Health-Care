@@ -65,6 +65,7 @@ export function EntityForm({
       label: 'Care facility',
       type: 'select',
       options: facilities.all.map((f) => ({ value: f.id, label: f.name })),
+      hint: initial ? 'Facility transfers require a separate care transfer workflow.' : undefined,
     };
     switch (kind) {
       case 'patient':
@@ -203,7 +204,7 @@ export function EntityForm({
           },
         ];
     }
-  }, [kind, facilities.all, patients.items, patients.all, orders.items, staff.all, resources.all]);
+  }, [kind, initial, facilities.all, patients.items, patients.all, orders.items, staff.all, resources.all]);
   const shape: Record<string, z.ZodString> = {};
   fields.forEach((f) => {
     shape[f.name] = z
@@ -321,6 +322,7 @@ export function EntityForm({
                 error={!!errors[field.name]}
                 helperText={String(errors[field.name]?.message || field.hint || '')}
                 slotProps={{
+                  input: { readOnly: !!initial && field.name === 'facility_id' },
                   inputLabel: { shrink: true },
                   htmlInput: { maxLength: field.name === 'prescription' ? 2000 : 200 },
                 }}

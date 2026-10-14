@@ -23,6 +23,97 @@ paths:
     get:
       responses:
         '200': {description: Current authorized tenant and membership}
+  /api/v1/portal/overview:
+    get:
+      description: Tenant aggregate counts and daily series. Enforces collection roles and facility scopes and audits clinical reads. Dates use the tenant timezone.
+      parameters:
+        - name: days
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 90, default: 14}
+        - name: facility
+          in: query
+          schema: {type: string, description: Authorized facility ID or all}
+      responses:
+        '200':
+          description: Counts, series, workflow statuses and generation time
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PortalOverview'}
+        '403': {description: Facility scope denied}
+  /api/v1/operations:
+    get:
+      description: Tenant administrator or auditor only. Process-wide Go runtime and worker measurements are explicitly shared, with tenant quotas and adapter capabilities. Unconfigured external systems have no fabricated metrics.
+      responses:
+        '200': {description: Runtime, workers, primary storage readiness, external adapter status and capabilities}
+        '403': {description: Role denied}
+  /api/v1/stream:
+    get:
+      description: Authenticated SSE invalidation hints with no clinical payload. Requires the bearer header. Membership and token validity are rechecked at each tick; clients refetch authorized collections.
+      responses:
+        '200':
+          description: Connected and refresh events at approximately 15 second intervals
+          content:
+            text/event-stream:
+              schema: {type: string}
+        '401': {description: Invalid or expired session}
+  /api/v1/configuration:
+    patch:
+      description: Tenant administrators may lower current assigned quotas. Increases require the platform control plane. Uses version compare-and-swap and records a control audit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [version, quotas]
+              properties:
+                version: {type: integer, minimum: 1}
+                quotas: {$ref: '#/components/schemas/Quotas'}
+      responses:
+        '200': {description: Updated tenant including incremented version}
+        '400': {description: Invalid budget or increase above current ceiling}
+        '403': {description: Tenant administrator required}
+        '409': {description: Stale tenant version}
+  /api/v1/patients/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/ID'}
+    get:
+      responses:
+        '200': {description: Authorized patient; clinical read audited}
+        '404': {description: Missing or unauthorized patient}
+    patch:
+      description: Update demographics and external reference within the existing facility. Facility transfers are not supported by this operation.
+      parameters:
+        - {$ref: '#/components/parameters/Idempotency'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [facility_id, external_id, name, birth_date]
+              properties:
+                facility_id: {type: string}
+                external_id: {type: string, maxLength: 128}
+                name: {type: string, maxLength: 200}
+                birth_date: {type: string, format: date}
+      responses:
+        '200': {description: Updated patient; mutation audited and outbox event emitted}
+        '400': {description: Invalid demographics or attempted facility transfer}
+        '403': {description: Role or facility scope denied}
+        '409': {description: Duplicate patient reference or changed idempotency input}
+  /api/v1/appointments/{id}/cancel:
+    parameters:
+      - {$ref: '#/components/parameters/ID'}
+      - {$ref: '#/components/parameters/Idempotency'}
+    post:
+      description: Atomically cancel a confirmed appointment, release reservations and return its workflow to ready_to_schedule. Denied after administration is recorded.
+      responses:
+        '200': {description: Cancelled appointment; mutation audited and outbox event emitted}
+        '403': {description: Role or facility scope denied}
+        '409': {description: Appointment or workflow is no longer cancellable}
   /metrics:
     get:
       security: []
@@ -366,6 +457,31 @@ components:
       required: true
       schema: {type: string, minLength: 1, maxLength: 128}
   schemas:
+    PortalOverview:
+      type: object
+      required: [counts, series, statuses, generated_at, days]
+      properties:
+        counts:
+          type: object
+          additionalProperties: {type: integer}
+          description: Only counts for collections the current role may read
+        series:
+          type: array
+          items:
+            type: object
+            properties:
+              date: {type: string, format: date}
+              orders: {type: integer}
+              completed: {type: integer}
+        statuses:
+          type: array
+          items:
+            type: object
+            properties:
+              name: {type: string}
+              count: {type: integer}
+        generated_at: {type: string, format: date-time}
+        days: {type: integer}
     Quotas:
       type: object
       required: [concurrent_jobs, queued_jobs, memory_mb, requests_per_minute]
