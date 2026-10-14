@@ -7,7 +7,8 @@ import { queryClient } from '../services/apiClient';
 import { makeTheme } from './theme';
 import { MainLayout } from '../layouts/MainLayout';
 import { ErrorBoundary, LoadingState } from '../shared/components';
-import Login, { AuthCallback } from '../features/auth/Login';
+const Login = lazy(() => import('../features/auth/Login'));
+const AuthCallback = lazy(() => import('../features/auth/Login').then((module) => ({ default: module.AuthCallback })));
 
 const Dashboard = lazy(() => import('../features/dashboard/Dashboard'));
 const Records = lazy(() => import('../features/patients/Records'));

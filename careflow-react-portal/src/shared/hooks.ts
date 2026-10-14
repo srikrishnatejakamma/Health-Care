@@ -15,11 +15,14 @@ export function useCollection<K extends Kind>(kind: K) {
   const session = useSession();
   const query = useInfiniteQuery({
     queryKey: [session.epoch, 'collection', kind],
-    queryFn: ({ pageParam, signal }) =>
-      api<Page<ResourceMap[K]>>(
+    queryFn: async ({ pageParam, signal }) => {
+      const page = await api<Page<ResourceMap[K]>>(
         `/${kind}?limit=100${pageParam ? `&after=${encodeURIComponent(pageParam)}` : ''}`,
         { signal },
-      ),
+      );
+      if (kind === 'events') page.items = page.items.map((row) => ({ ...row, id: String(row.event_id) }));
+      return page;
+    },
     initialPageParam: '',
     getNextPageParam: (last) => last.next_cursor || undefined,
     enabled: !!session.me && canRead(kind, session.me.roles),
