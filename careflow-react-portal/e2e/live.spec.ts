@@ -4,7 +4,10 @@ test.use({ trace: 'off', screenshot: 'off' });
 
 test.describe('live Go API', () => {
   test('creates and edits real tenant records and renders outbox events', async ({ page }) => {
-    test.skip(!process.env.CAREFLOW_TEST_TOKEN, 'Supply a local synthetic-tenant token to verify the Go API.');
+    test.skip(
+      !process.env.CAREFLOW_TEST_TOKEN,
+      'Supply a local synthetic-tenant token to verify the Go API.',
+    );
     const suffix = Date.now().toString();
     const facility = `UI verification ${suffix}`;
     const errors: string[] = [];
@@ -37,7 +40,9 @@ test.describe('live Go API', () => {
     await page.getByText('Synthetic Live UI', { exact: true }).click();
     dialog = page.getByRole('dialog');
     await dialog.getByRole('button', { name: 'Edit patient', exact: true }).click();
-    const edit = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Edit patient' }) });
+    const edit = page
+      .getByRole('dialog')
+      .filter({ has: page.getByRole('heading', { name: 'Edit patient' }) });
     await edit.getByLabel('Full name', { exact: true }).fill('Synthetic Live Edited');
     await edit.getByRole('button', { name: 'Save changes', exact: true }).click();
     await expect(edit).not.toBeVisible();
@@ -48,7 +53,9 @@ test.describe('live Go API', () => {
     await expect(page.getByText('Patient Updated', { exact: true })).toBeVisible();
     await page.getByRole('link', { name: 'Memory', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Memory & resource governor' })).toBeVisible();
-    const persisted = await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
+    const persisted = await page.evaluate(() =>
+      JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }),
+    );
     expect(persisted.includes(process.env.CAREFLOW_TEST_TOKEN!)).toBe(false);
     expect(persisted).not.toContain('Synthetic Live Edited');
     expect(errors).toEqual([]);

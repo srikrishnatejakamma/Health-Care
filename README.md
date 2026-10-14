@@ -28,6 +28,18 @@ Invoke-RestMethod http://127.0.0.1:18080/api/v1/me -Headers $taskHeaders
 
 Token generation is an offline operator tool, not an HTTP endpoint. Tokens expire in one hour by default. RS256 mode accepts tokens from the configured identity provider instead.
 
+## React portal
+
+The [CareFlow portal](careflow-react-portal/README.md) implements the UI requirement with a responsive dashboard, tenant switching, patient/therapy workflows, appointment calendar, job scheduler, workflow drafts, monitoring and administration. It opens with synthetic demo records; use `/login` and a development token to connect to the Go API.
+
+```powershell
+Set-Location careflow-react-portal
+npm ci
+npm run dev
+```
+
+Requires Node.js 22.12+. Open `http://127.0.0.1:5173`; Vite proxies live API calls to port 18080. Alternatively run `docker compose --profile ui up --build -d` from the repository root and open port 15173. See the portal README for authentication, capability limits, browser tests and Kubernetes instructions.
+
 ## Durable development environment
 
 ```powershell
@@ -74,15 +86,20 @@ Send `Authorization: Bearer <token>`. `X-Tenant-ID` selects an authorized member
 | --- | --- |
 | `GET /healthz`, `/readyz`, `/metrics` | Health, storage readiness and aggregate metrics. |
 | `GET /api/v1/me` | Tenant, user, roles and facility scopes. |
+| `GET /api/v1/portal/overview` | Role/facility-filtered aggregate counts and daily series. |
+| `GET /api/v1/operations`, `/api/v1/stream` | Authorized runtime measurements and authenticated SSE refresh hints. |
+| `PATCH /api/v1/configuration` | Tenant administrator lowers assigned quotas with version compare-and-swap. |
 | `POST /api/v1/platform/tenants` | Create tenant and initial administrator; platform operator only. |
 | `GET /api/v1/platform/tenants[/{id}]` | Read tenant registry; platform operator only. |
 | `PATCH /api/v1/platform/tenants/{id}` | Update lifecycle/quotas using current `version`. |
 | `PUT /api/v1/memberships/{user}` | Tenant administrator manages roles, facilities and active state. |
 | `POST /api/v1/facilities`, `/staff`, `/care-resources` | Configure scheduling resources. |
 | `POST /api/v1/patients`, `/orders` | Create patient and therapy workflow. |
+| `PATCH /api/v1/patients/{id}` | Idempotent demographic update within the existing facility. |
 | `POST /api/v1/workflows/{id}/outcomes` | Record `{ "step": "insurance", "outcome": "approved" }`, or another supported outcome. |
 | `POST /api/v1/workflows/{id}/cancel` | Cancel eligible workflow and release reservations. |
 | `POST /api/v1/appointments` | Reserve a qualified nurse and chair/room after prerequisites pass. |
+| `POST /api/v1/appointments/{id}/cancel` | Release eligible reservation and return workflow to scheduling. |
 | `POST /api/v1/schedules` | Create `{ "kind": "reconciliation", "expression": "@every 15m" }`. |
 | `POST /api/v1/schedules/{id}/actions` | `pause`, `resume`, or `trigger`. |
 | `POST /api/v1/jobs/{id}/actions` | `cancel` or `retry` dead/cancelled jobs. |

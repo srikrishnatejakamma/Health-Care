@@ -21,7 +21,7 @@ describe('accessible operational controls', () => {
     );
     expect(confirm).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog')).toHaveAccessibleName('Cancel appointment?');
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel appointment', exact: true }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel appointment' }));
     expect(confirm).toHaveBeenCalledOnce();
   });
   it('conveys status through readable text as well as color', () => {
