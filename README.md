@@ -44,6 +44,14 @@ npm run dev
 
 Requires Node.js 22.12+. Open `http://127.0.0.1:5173`; Vite proxies live API calls to port 18080. Alternatively run `docker compose --profile ui up --build -d` from the repository root and open port 15173. See the portal README for authentication, capability limits, browser tests and Kubernetes instructions.
 
+## Therapy workflow
+
+The workflow carries tenant and facility authorization from patient registration through explicit approvals, atomic appointment booking, administration and recorded billing submission.
+
+![Detailed therapy workflow including tenant authorization, approval gates, reservation conflicts, cancellation and background transitions](docs/images/therapy-workflow.svg)
+
+See the [detailed workflow guide](docs/workflow.md) for authorization and transaction boundaries, scheduler retries, outbox delivery, real-time refresh, state transitions and API mappings. The [Mermaid source](docs/diagrams/therapy-workflow.mmd) is editable. External outcomes must be explicitly recorded; the diagram does not imply automatic payer approval, pharmacy synchronization or claim settlement.
+
 ## Durable development environment
 
 ```powershell

@@ -1,0 +1,58 @@
+flowchart TB
+  subgraph access["1. Identity and tenant boundary"]
+    Login["Sign in / connect API token"] --> Auth{"JWT valid and tenant membership active?"}
+    Auth -->|No| Deny["Reject request / return to sign-in"]
+    Auth -->|Yes| Scope["Resolve tenant, role and facility scope<br/>Enforce request quotas on API operations"]
+  end
+
+  subgraph care["2. Patient and therapy registration"]
+    Scope --> Patient["Find or register an authorized patient"]
+    Patient --> Order["Create therapy order<br/>Medication + prescription reference"]
+    Order --> Pending["awaiting_approvals<br/>Workflow definition v1 pinned"]
+  end
+
+  subgraph approvals["3. Explicit prerequisite outcomes"]
+    Pending --> Insurance["Insurance<br/>approved / rejected"]
+    Pending --> Inventory["Medication readiness<br/>available / unavailable"]
+    Pending --> Clearance["Clinical clearance<br/>approved / rejected"]
+    Insurance --> Advance["Persist outcome + enqueue workflow.advance<br/>Worker evaluates recorded prerequisites"]
+    Inventory --> Advance
+    Clearance --> Advance
+    Advance --> Gate{"Prerequisite result?"}
+    Gate -->|Any negative outcome| Rejected["rejected"]
+    Gate -->|Still missing outcomes| Pending
+    Gate -->|All three positive| Ready["ready_to_schedule"]
+  end
+
+  subgraph booking["4. Atomic appointment reservation"]
+    Ready --> Select["Choose future time, qualified nurse<br/>and chair or room in the order facility"]
+    Select --> Check{"Eligible and no patient / nurse / resource<br/>overlap; facility capacity available?"}
+    Check -->|No| Conflict["Reject booking<br/>Resolve validation or reservation conflict"]
+    Conflict --> Select
+    Check -->|Yes| Scheduled["scheduled<br/>Confirmed appointment committed atomically"]
+    Scheduled -->|Cancel appointment before administration| Release["Release reservation<br/>Record cancellation checkpoint"]
+    Release --> Ready
+  end
+
+  subgraph completion["5. Administration and billing"]
+    Scheduled --> Admin["Clinical user explicitly records<br/>administration = completed"]
+    Admin --> AdminWorker["Worker advances workflow<br/>Marks confirmed appointment completed"]
+    AdminWorker --> Billing["awaiting_billing"]
+    Billing --> Submission["Authorized user records<br/>billing = submitted"]
+    Submission --> BillingWorker["Worker advances workflow<br/>Persists final checkpoint and order state"]
+    BillingWorker --> Done["completed"]
+  end
+
+  Pending -.-> Cancel["Cancel eligible workflow<br/>Release confirmed reservations"]
+  Ready -.-> Cancel
+  Scheduled -.-> Cancel
+  Cancel --> Cancelled["cancelled"]
+
+  classDef state fill:#edf2ff,stroke:#3459e6,color:#1b2940,stroke-width:2px;
+  classDef success fill:#e8f6ef,stroke:#128970,color:#135d4d,stroke-width:2px;
+  classDef exception fill:#fff3e2,stroke:#bd7b16,color:#754b0e;
+  classDef async fill:#f1ecff,stroke:#8460c5,color:#4b337c;
+  class Pending,Ready,Scheduled,Billing state;
+  class Done success;
+  class Deny,Rejected,Conflict,Cancelled exception;
+  class Advance,AdminWorker,BillingWorker async;

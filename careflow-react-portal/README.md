@@ -18,6 +18,12 @@ These screenshots show synthetic demo records.
 
 <img src="../docs/images/careflow-mobile.png" alt="Mobile operations dashboard with compact navigation, therapy metrics and activity chart" width="390" />
 
+## Therapy workflow
+
+![Detailed CareFlow workflow from tenant authorization through therapy approvals, appointment scheduling, administration and billing](../docs/images/therapy-workflow.svg)
+
+See the [detailed workflow guide](../docs/workflow.md) for tenant isolation, cancellation paths, background job retries, event delivery and API mappings. The [editable Mermaid source](../docs/diagrams/therapy-workflow.mmd) follows the implemented v1 state machine; designer drafts do not change active therapies.
+
 ## Start locally
 
 Requires Node.js 22.12+ and npm. From the repository root:
