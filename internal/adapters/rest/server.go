@@ -75,8 +75,10 @@ func (s *Server) Handler() http.Handler {
 	tenant("POST /api/v1/staff", create(s, s.Service.CreateStaff))
 	tenant("POST /api/v1/care-resources", create(s, s.Service.CreateResource))
 	tenant("POST /api/v1/patients", create(s, s.Service.CreatePatient))
+	tenant("PATCH /api/v1/patients/{id}",func(w http.ResponseWriter,r *http.Request){var in application.PatientInput;if !s.decode(w,r,&in){return};b,err:=s.Service.UpdatePatient(r.Context(),r.Header.Get("Idempotency-Key"),r.PathValue("id"),in);s.result(w,r,b,err,200)})
 	tenant("POST /api/v1/orders", create(s, s.Service.CreateOrder))
 	tenant("POST /api/v1/appointments", create(s, s.Service.CreateAppointment))
+	tenant("POST /api/v1/appointments/{id}/cancel",func(w http.ResponseWriter,r *http.Request){b,err:=s.Service.CancelAppointment(r.Context(),r.Header.Get("Idempotency-Key"),r.PathValue("id"));s.result(w,r,b,err,200)})
 	tenant("POST /api/v1/schedules", create(s, s.Service.CreateSchedule))
 	tenant("POST /api/v1/workflows/{id}/outcomes", func(w http.ResponseWriter, r *http.Request) {
 		var in application.OutcomeInput
