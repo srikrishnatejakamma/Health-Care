@@ -1,11 +1,46 @@
-import { Alert, Box, Button, Chip, Dialog, DialogContent, DialogTitle, Divider, IconButton, Stack, Tab, Tabs, Typography } from '@mui/material';
-import { ArrowRight, Check, CheckCheck, ChevronRight, ClipboardList, Clock3, Copy, FileText, Plus, RefreshCw, ShieldCheck, X } from 'lucide-react';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  IconButton,
+  Stack,
+  Tab,
+  Tabs,
+  Typography,
+} from '@mui/material';
+import {
+  ArrowRight,
+  Check,
+  CheckCheck,
+  ChevronRight,
+  ClipboardList,
+  Clock3,
+  Copy,
+  FileText,
+  Plus,
+  RefreshCw,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
 import type { GridColDef } from '@mui/x-data-grid';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useCollection, useAction } from '../../shared/hooks';
-import { ConfirmDialog, EmptyState, ErrorState, PageHeader, PermissionState, Person, StatusBadge } from '../../shared/components';
+import {
+  ConfirmDialog,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  PermissionState,
+  Person,
+  StatusBadge,
+} from '../../shared/components';
 import { DataTable } from '../../shared/DataTable';
 import { EntityForm, type FormKind } from '../../shared/EntityForm';
 import { date, displayName, label, shortId, time } from '../../shared/format';
@@ -13,25 +48,681 @@ import { canRead, hasRole, type Entity, type Kind, type Patient, type Workflow }
 import { api, queryClient } from '../../services/apiClient';
 import { useSession } from '../../stores/session';
 
-export default function Records(){const route=useLocation().pathname.split('/')[1];const {id}=useParams();const navigate=useNavigate();const s=useSession();const roles=s.me!.roles;const [form,setForm]=useState<FormKind|null>(null);const [tab,setTab]=useState('overview');const patients=useCollection('patients');const orders=useCollection('orders');const workflows=useCollection('workflows');const appointments=useCollection('appointments');const facilities=useCollection('facilities');const audit=useCollection('audit');
- const kind:Kind=route==='patients'?'patients':route==='therapy'||route==='prescriptions'?'orders':'workflows';const collection=kind==='patients'?patients:kind==='orders'?orders:workflows;
- const detail=useQuery({queryKey:[s.epoch,'detail',kind,id],queryFn:({signal})=>api<Entity>(`/${kind}/${id}`,{signal}),enabled:!!id&&canRead(kind,roles)});
- const titles:Record<string,{title:string;description:string;action?:string;form?:FormKind}>={patients:{title:'Patients',description:'A connected view of the people in your care.',action:'Register patient',form:'patient'},therapy:{title:'Therapy orders',description:'Coordinate every step, from prescription to completed care.',action:'New therapy order',form:'order'},workflows:{title:'Workflow executions',description:'Follow the progress, prerequisites, and history of every therapy.'},prescriptions:{title:'Prescription references',description:'Review order references and recorded clinical clearance.'},insurance:{title:'Insurance authorizations',description:'Review recorded insurance decisions and therapies awaiting approval.'},pharmacy:{title:'Pharmacy readiness',description:'Track medication readiness for each therapy workflow.'},billing:{title:'Billing & claims',description:'Review administration completion and recorded billing submissions.'}};
- const config=titles[route]||titles.workflows;if(!canRead(kind,roles))return <PermissionState/>;
- let rows:Entity[]=collection.items;if(route==='insurance')rows=workflows.items.filter(w=>w.status==='awaiting_approvals'||w.outcomes.insurance);if(route==='pharmacy')rows=workflows.items.filter(w=>!['cancelled'].includes(w.status));if(route==='billing')rows=workflows.items.filter(w=>['awaiting_billing','completed'].includes(w.status));
- const patientName=(patientId:string)=>displayName(patients.all.find(p=>p.id===patientId)?.name,s.maskPhi);
- const patientFor=(row:Entity)=>kind==='patients'?row as Patient:patients.all.find(p=>p.id===(kind==='orders'?row.patient_id:orders.all.find(o=>o.id===row.order_id)?.patient_id));
- const patientColumn:GridColDef={field:'patient',headerName:'PATIENT',flex:1.25,minWidth:200,sortable:false,renderCell:({row})=>{const p=patientFor(row);return <Person name={p?displayName(p.name,s.maskPhi):'Authorized patient reference'} sub={s.maskPhi?'Protected reference':p?.external_id||shortId(row.patient_id||row.order_id)}/>}};
- let columns:GridColDef[];
- if(kind==='patients')columns=[{...patientColumn,field:'name'}, {field:'birth_date',headerName:'DATE OF BIRTH',minWidth:140,flex:.8,renderCell:({value})=>s.maskPhi?'•• / •• / ••••':date(value,{month:'short',day:'numeric',year:'numeric'})},{field:'facility_id',headerName:'FACILITY',minWidth:210,flex:1.2,renderCell:({value})=>facilities.all.find(f=>f.id===value)?.name||shortId(value)},{field:'therapies',headerName:'THERAPY ORDERS',minWidth:120,renderCell:({row})=><Chip label={orders.all.filter(o=>o.patient_id===row.id).length} size="small" variant="outlined"/>},{field:'created_at',headerName:'REGISTERED',minWidth:130,renderCell:({value})=>date(value)}];
- else if(kind==='orders')columns=[patientColumn,{field:'medication',headerName:'THERAPY',minWidth:200,flex:1.15,renderCell:({row})=><Box><Typography variant="body2" fontWeight={550}>{String(row.medication)}</Typography><Typography variant="caption" color="text.secondary">{route==='prescriptions'?String(row.prescription):shortId(row.id)}</Typography></Box>},{field:'status',headerName:'STATUS',minWidth:175,renderCell:({value})=><StatusBadge status={value}/>},{field:'facility_id',headerName:'FACILITY',minWidth:190,flex:1,renderCell:({value})=>facilities.all.find(f=>f.id===value)?.name||shortId(value)},{field:'created_at',headerName:'CREATED',minWidth:120,renderCell:({value})=>date(value)}];
- else columns=[patientColumn,{field:'therapy',headerName:'THERAPY',minWidth:190,flex:1.15,renderCell:({row})=>orders.all.find(o=>o.id===row.order_id)?.medication||shortId(row.order_id)},{field:'status',headerName:route==='insurance'?'AUTHORIZATION':route==='pharmacy'?'READINESS':'WORKFLOW STATE',minWidth:180,renderCell:({row})=><StatusBadge status={route==='insurance'?row.outcomes.insurance||'awaiting_approvals':route==='pharmacy'?row.outcomes.inventory||'queued':row.status}/>},{field:'version',headerName:'VERSION',minWidth:90,renderCell:({value})=>`v${value}`},{field:'updated_at',headerName:'LAST UPDATED',minWidth:150,renderCell:({value})=><Box><Typography variant="body2">{date(value)}</Typography><Typography variant="caption" color="text.secondary">{time(value)}</Typography></Box>}];
- columns.push({field:'actions',headerName:'',width:55,sortable:false,filterable:false,renderCell:({row})=><IconButton size="small" aria-label={`View record ${row.id}`} onClick={e=>{e.stopPropagation();navigate(`/${route}/${row.id}`)}}><ChevronRight size={16}/></IconButton>});
- const selected=detail.data;const selectedPatient=selected?patientFor(selected):undefined;const selectedOrder=selected?(kind==='orders'?orders.all.find(o=>o.id===id):kind==='workflows'?orders.all.find(o=>o.id===selected.order_id):undefined):undefined;const selectedWorkflow=selected?(kind==='workflows'?selected as Workflow:kind==='orders'?workflows.all.find(w=>w.id===selected.workflow_id):undefined):undefined;
- const close=()=>{setTab('overview');navigate(`/${route}`)};
- return <><PageHeader eyebrow="CARE OPERATIONS" title={config.title} description={config.description} actions={<><IconButton className="outlined-icon" aria-label="Refresh records" onClick={()=>void queryClient.invalidateQueries()}><RefreshCw size={16}/></IconButton>{config.form&&hasRole(roles,'tenant_admin','clinical')&&<Button variant="contained" startIcon={<Plus size={16}/>} onClick={()=>setForm(config.form!)}>{config.action}</Button>}</>}/>{route==='pharmacy'&&<Alert severity="info" sx={{mb:2.5}}>This view shows recorded readiness by therapy. Stock quantities and pharmacy preparation feeds require a connected inventory system.</Alert>}{route==='prescriptions'&&<Alert severity="info" sx={{mb:2.5}}>Prescription references are provided with therapy orders. Approved clinical staff record clearance separately.</Alert>}{route==='billing'&&<Alert severity="info" sx={{mb:2.5}}>Billing submission is recorded as a workflow outcome. Payer claim submission and payment balances require a connected financial system.</Alert>}{collection.error?<ErrorState error={collection.error} retry={()=>void collection.refetch()}/>:<DataTable rows={rows} columns={columns} loading={collection.isLoading} onRow={row=>navigate(`/${route}/${row.id}`)} name={route==='patients'?'patients':route==='therapy'?'orders':'workflows'} hasMore={collection.hasNextPage} loadMore={()=>void collection.fetchNextPage()} statuses={kind==='patients'?undefined:['awaiting_approvals','ready_to_schedule','scheduled','awaiting_billing','completed','rejected','cancelled']}/>}
- {id&&<Dialog open onClose={close} fullWidth maxWidth="md"><DialogTitle><Stack direction="row" alignItems="center" justifyContent="space-between"><Typography variant="h2">{kind==='patients'?'Patient profile':kind==='orders'?'Therapy details':'Workflow details'}</Typography><IconButton aria-label="Close record details" onClick={close}><X size={19}/></IconButton></Stack></DialogTitle><DialogContent>{detail.error?<ErrorState error={detail.error} retry={()=>void detail.refetch()}/>:!selected?<Typography sx={{py:4}}>Loading record…</Typography>:<><Stack direction={{xs:'column',sm:'row'}} justifyContent="space-between" gap={2} sx={{mb:3}}><Person name={selectedPatient?displayName(selectedPatient.name,s.maskPhi):selectedOrder?.medication||shortId(selected.id)} sub={s.maskPhi?'Protected patient details':selectedPatient?.external_id||shortId(selected.id)}/><Stack direction="row" gap={1} alignItems="center">{typeof selected.status==='string'&&<StatusBadge status={selected.status}/>}<IconButton aria-label="Copy record ID" onClick={()=>{void navigator.clipboard.writeText(selected.id).then(()=>s.notify('Record ID copied.')).catch(()=>s.notify('Copy is unavailable in this browser.'))}}><Copy size={15}/></IconButton>{kind==='patients'&&hasRole(roles,'tenant_admin','clinical')&&!s.maskPhi&&<Button size="small" variant="outlined" onClick={()=>setForm('patient')}>Edit patient</Button>}</Stack></Stack><Tabs value={tab} onChange={(_,value)=>setTab(value)} sx={{borderBottom:1,borderColor:'divider',mb:3}}><Tab value="overview" label="Overview"/><Tab value="history" label="Care history"/><Tab value="audit" label="Audit trail"/></Tabs>{tab==='overview'&&<><Box className="detail-grid">{(kind==='patients'?[['Patient reference',s.maskPhi?'Protected':selected.external_id],['Date of birth',s.maskPhi?'Protected':date(selected.birth_date,{month:'long',day:'numeric',year:'numeric'})],['Care facility',facilities.all.find(f=>f.id===selected.facility_id)?.name],['Registered',date(selected.created_at,{month:'long',day:'numeric',year:'numeric'})]]:[['Therapy',selectedOrder?.medication||'—'],['Prescription reference',s.maskPhi?'Protected':selectedOrder?.prescription||'—'],['Workflow version',selectedWorkflow?`Definition v${selectedWorkflow.definition_version} · Configuration v${selectedWorkflow.version}`:'—'],['Care facility',facilities.all.find(f=>f.id===selected.facility_id)?.name]]).map(([key,value])=><Box key={String(key)}><Typography variant="caption" color="text.secondary">{String(key)}</Typography><Typography sx={{mt:.5}} fontWeight={500}>{String(value||'—')}</Typography></Box>)}</Box>{selectedWorkflow&&<WorkflowOutcomes workflow={selectedWorkflow}/>} {kind==='patients'&&<Box sx={{mt:3}}><Typography variant="h3" sx={{mb:1.5}}>Therapy history</Typography>{orders.all.filter(o=>o.patient_id===selected.id).map(o=><Button key={o.id} fullWidth onClick={()=>navigate(`/therapy/${o.id}`)} sx={{justifyContent:'space-between',p:1.5,borderBottom:1,borderColor:'divider'}}><Typography>{o.medication}</Typography><StatusBadge status={o.status}/></Button>)}{!orders.all.some(o=>o.patient_id===selected.id)&&<Typography color="text.secondary">No therapy orders registered for this patient.</Typography>}</Box>}</>}{tab==='history'&&<Stack spacing={2}>{kind==='patients'?appointments.all.filter(a=>a.patient_id===selected.id).map(a=><Box key={a.id} className="history-item"><CalendarIcon/><Box><Typography fontWeight={550}>Infusion appointment</Typography><Typography variant="body2" color="text.secondary">{date(a.starts_at)} · {time(a.starts_at)}–{time(a.ends_at)}</Typography></Box><StatusBadge status={a.status}/></Box>):selectedWorkflow?.checkpoints.map((step,i)=><Box key={`${step}-${i}`} className="history-item"><Box className="history-step"><Check size={15}/></Box><Box><Typography fontWeight={550}>{label(step)}</Typography><Typography variant="caption" color="text.secondary">Durable checkpoint {i+1}</Typography></Box></Box>)}{kind==='patients'&&!appointments.all.some(a=>a.patient_id===selected.id)&&<EmptyState title="No appointments yet" description="Appointments linked to this patient will appear here."/>}</Stack>}{tab==='audit'&&(audit.allowed?<Stack spacing={2}>{audit.all.filter(a=>[selected.id,selectedWorkflow?.id,selectedOrder?.id].includes(a.resource_id)).slice(0,20).map(a=><Box key={a.id} className="history-item"><Box className="history-step"><FileText size={15}/></Box><Box><Typography fontWeight={550}>{label(a.action)}</Typography><Typography variant="caption" color="text.secondary">{a.actor} · {date(a.at)} · {time(a.at)}</Typography></Box></Box>)}{!audit.all.some(a=>[selected.id,selectedWorkflow?.id,selectedOrder?.id].includes(a.resource_id))&&<Typography color="text.secondary">No audit entries are loaded for this record.</Typography>}</Stack>:<PermissionState/>)}</>}</DialogContent></Dialog>}
- {form&&<EntityForm key={form+(form==='patient'&&id?id:'new')} kind={form} initial={form==='patient'&&id?selected:undefined} onClose={()=>setForm(null)}/>}</>
+export default function Records() {
+  const route = useLocation().pathname.split('/')[1];
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const s = useSession();
+  const roles = s.me!.roles;
+  const [form, setForm] = useState<FormKind | null>(null);
+  const [tab, setTab] = useState('overview');
+  const patients = useCollection('patients');
+  const orders = useCollection('orders');
+  const workflows = useCollection('workflows');
+  const appointments = useCollection('appointments');
+  const facilities = useCollection('facilities');
+  const audit = useCollection('audit');
+  const kind: Kind =
+    route === 'patients'
+      ? 'patients'
+      : route === 'therapy' || route === 'prescriptions'
+        ? 'orders'
+        : 'workflows';
+  const collection = kind === 'patients' ? patients : kind === 'orders' ? orders : workflows;
+  const detail = useQuery({
+    queryKey: [s.epoch, 'detail', kind, id],
+    queryFn: ({ signal }) => api<Entity>(`/${kind}/${id}`, { signal }),
+    enabled: !!id && canRead(kind, roles),
+  });
+  const titles: Record<string, { title: string; description: string; action?: string; form?: FormKind }> = {
+    patients: {
+      title: 'Patients',
+      description: 'A connected view of the people in your care.',
+      action: 'Register patient',
+      form: 'patient',
+    },
+    therapy: {
+      title: 'Therapy orders',
+      description: 'Coordinate every step, from prescription to completed care.',
+      action: 'New therapy order',
+      form: 'order',
+    },
+    workflows: {
+      title: 'Workflow executions',
+      description: 'Follow the progress, prerequisites, and history of every therapy.',
+    },
+    prescriptions: {
+      title: 'Prescription references',
+      description: 'Review order references and recorded clinical clearance.',
+    },
+    insurance: {
+      title: 'Insurance authorizations',
+      description: 'Review recorded insurance decisions and therapies awaiting approval.',
+    },
+    pharmacy: {
+      title: 'Pharmacy readiness',
+      description: 'Track medication readiness for each therapy workflow.',
+    },
+    billing: {
+      title: 'Billing & claims',
+      description: 'Review administration completion and recorded billing submissions.',
+    },
+  };
+  const config = titles[route] || titles.workflows;
+  if (!canRead(kind, roles)) return <PermissionState />;
+  let rows: Entity[] = collection.items;
+  if (route === 'insurance')
+    rows = workflows.items.filter((w) => w.status === 'awaiting_approvals' || w.outcomes.insurance);
+  if (route === 'pharmacy') rows = workflows.items.filter((w) => !['cancelled'].includes(w.status));
+  if (route === 'billing')
+    rows = workflows.items.filter((w) => ['awaiting_billing', 'completed'].includes(w.status));
+  const patientName = (patientId: string) =>
+    displayName(patients.all.find((p) => p.id === patientId)?.name, s.maskPhi);
+  const patientFor = (row: Entity) =>
+    kind === 'patients'
+      ? (row as Patient)
+      : patients.all.find(
+          (p) =>
+            p.id ===
+            (kind === 'orders' ? row.patient_id : orders.all.find((o) => o.id === row.order_id)?.patient_id),
+        );
+  const patientColumn: GridColDef = {
+    field: 'patient',
+    headerName: 'PATIENT',
+    flex: 1.25,
+    minWidth: 200,
+    sortable: false,
+    renderCell: ({ row }) => {
+      const p = patientFor(row);
+      return (
+        <Person
+          name={p ? displayName(p.name, s.maskPhi) : 'Authorized patient reference'}
+          sub={s.maskPhi ? 'Protected reference' : p?.external_id || shortId(row.patient_id || row.order_id)}
+        />
+      );
+    },
+  };
+  let columns: GridColDef[];
+  if (kind === 'patients')
+    columns = [
+      { ...patientColumn, field: 'name' },
+      {
+        field: 'birth_date',
+        headerName: 'DATE OF BIRTH',
+        minWidth: 140,
+        flex: 0.8,
+        renderCell: ({ value }) =>
+          s.maskPhi ? '•• / •• / ••••' : date(value, { month: 'short', day: 'numeric', year: 'numeric' }),
+      },
+      {
+        field: 'facility_id',
+        headerName: 'FACILITY',
+        minWidth: 210,
+        flex: 1.2,
+        renderCell: ({ value }) => facilities.all.find((f) => f.id === value)?.name || shortId(value),
+      },
+      {
+        field: 'therapies',
+        headerName: 'THERAPY ORDERS',
+        minWidth: 120,
+        renderCell: ({ row }) => (
+          <Chip
+            label={orders.all.filter((o) => o.patient_id === row.id).length}
+            size="small"
+            variant="outlined"
+          />
+        ),
+      },
+      {
+        field: 'created_at',
+        headerName: 'REGISTERED',
+        minWidth: 130,
+        renderCell: ({ value }) => date(value),
+      },
+    ];
+  else if (kind === 'orders')
+    columns = [
+      patientColumn,
+      {
+        field: 'medication',
+        headerName: 'THERAPY',
+        minWidth: 200,
+        flex: 1.15,
+        renderCell: ({ row }) => (
+          <Box>
+            <Typography variant="body2" fontWeight={550}>
+              {String(row.medication)}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {route === 'prescriptions' ? String(row.prescription) : shortId(row.id)}
+            </Typography>
+          </Box>
+        ),
+      },
+      {
+        field: 'status',
+        headerName: 'STATUS',
+        minWidth: 175,
+        renderCell: ({ value }) => <StatusBadge status={value} />,
+      },
+      {
+        field: 'facility_id',
+        headerName: 'FACILITY',
+        minWidth: 190,
+        flex: 1,
+        renderCell: ({ value }) => facilities.all.find((f) => f.id === value)?.name || shortId(value),
+      },
+      { field: 'created_at', headerName: 'CREATED', minWidth: 120, renderCell: ({ value }) => date(value) },
+    ];
+  else
+    columns = [
+      patientColumn,
+      {
+        field: 'therapy',
+        headerName: 'THERAPY',
+        minWidth: 190,
+        flex: 1.15,
+        renderCell: ({ row }) =>
+          orders.all.find((o) => o.id === row.order_id)?.medication || shortId(row.order_id),
+      },
+      {
+        field: 'status',
+        headerName:
+          route === 'insurance' ? 'AUTHORIZATION' : route === 'pharmacy' ? 'READINESS' : 'WORKFLOW STATE',
+        minWidth: 180,
+        renderCell: ({ row }) => (
+          <StatusBadge
+            status={
+              route === 'insurance'
+                ? row.outcomes.insurance || 'awaiting_approvals'
+                : route === 'pharmacy'
+                  ? row.outcomes.inventory || 'queued'
+                  : row.status
+            }
+          />
+        ),
+      },
+      { field: 'version', headerName: 'VERSION', minWidth: 90, renderCell: ({ value }) => `v${value}` },
+      {
+        field: 'updated_at',
+        headerName: 'LAST UPDATED',
+        minWidth: 150,
+        renderCell: ({ value }) => (
+          <Box>
+            <Typography variant="body2">{date(value)}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {time(value)}
+            </Typography>
+          </Box>
+        ),
+      },
+    ];
+  columns.push({
+    field: 'actions',
+    headerName: '',
+    width: 55,
+    sortable: false,
+    filterable: false,
+    renderCell: ({ row }) => (
+      <IconButton
+        size="small"
+        aria-label={`View record ${row.id}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          navigate(`/${route}/${row.id}`);
+        }}
+      >
+        <ChevronRight size={16} />
+      </IconButton>
+    ),
+  });
+  const selected = detail.data;
+  const selectedPatient = selected ? patientFor(selected) : undefined;
+  const selectedOrder = selected
+    ? kind === 'orders'
+      ? orders.all.find((o) => o.id === id)
+      : kind === 'workflows'
+        ? orders.all.find((o) => o.id === selected.order_id)
+        : undefined
+    : undefined;
+  const selectedWorkflow = selected
+    ? kind === 'workflows'
+      ? (selected as Workflow)
+      : kind === 'orders'
+        ? workflows.all.find((w) => w.id === selected.workflow_id)
+        : undefined
+    : undefined;
+  const close = () => {
+    setTab('overview');
+    navigate(`/${route}`);
+  };
+  return (
+    <>
+      <PageHeader
+        eyebrow="CARE OPERATIONS"
+        title={config.title}
+        description={config.description}
+        actions={
+          <>
+            <IconButton
+              className="outlined-icon"
+              aria-label="Refresh records"
+              onClick={() => void queryClient.invalidateQueries()}
+            >
+              <RefreshCw size={16} />
+            </IconButton>
+            {config.form && hasRole(roles, 'tenant_admin', 'clinical') && (
+              <Button
+                variant="contained"
+                startIcon={<Plus size={16} />}
+                onClick={() => setForm(config.form!)}
+              >
+                {config.action}
+              </Button>
+            )}
+          </>
+        }
+      />
+      {route === 'pharmacy' && (
+        <Alert severity="info" sx={{ mb: 2.5 }}>
+          This view shows recorded readiness by therapy. Stock quantities and pharmacy preparation feeds
+          require a connected inventory system.
+        </Alert>
+      )}
+      {route === 'prescriptions' && (
+        <Alert severity="info" sx={{ mb: 2.5 }}>
+          Prescription references are provided with therapy orders. Approved clinical staff record clearance
+          separately.
+        </Alert>
+      )}
+      {route === 'billing' && (
+        <Alert severity="info" sx={{ mb: 2.5 }}>
+          Billing submission is recorded as a workflow outcome. Payer claim submission and payment balances
+          require a connected financial system.
+        </Alert>
+      )}
+      {collection.error ? (
+        <ErrorState error={collection.error} retry={() => void collection.refetch()} />
+      ) : (
+        <DataTable
+          rows={rows}
+          columns={columns}
+          loading={collection.isLoading}
+          onRow={(row) => navigate(`/${route}/${row.id}`)}
+          name={route === 'patients' ? 'patients' : route === 'therapy' ? 'orders' : 'workflows'}
+          hasMore={collection.hasNextPage}
+          loadMore={() => void collection.fetchNextPage()}
+          statuses={
+            kind === 'patients'
+              ? undefined
+              : [
+                  'awaiting_approvals',
+                  'ready_to_schedule',
+                  'scheduled',
+                  'awaiting_billing',
+                  'completed',
+                  'rejected',
+                  'cancelled',
+                ]
+          }
+        />
+      )}
+      {id && (
+        <Dialog open onClose={close} fullWidth maxWidth="md">
+          <DialogTitle>
+            <Stack direction="row" alignItems="center" justifyContent="space-between">
+              <Typography variant="h2">
+                {kind === 'patients'
+                  ? 'Patient profile'
+                  : kind === 'orders'
+                    ? 'Therapy details'
+                    : 'Workflow details'}
+              </Typography>
+              <IconButton aria-label="Close record details" onClick={close}>
+                <X size={19} />
+              </IconButton>
+            </Stack>
+          </DialogTitle>
+          <DialogContent>
+            {detail.error ? (
+              <ErrorState error={detail.error} retry={() => void detail.refetch()} />
+            ) : !selected ? (
+              <Typography sx={{ py: 4 }}>Loading record…</Typography>
+            ) : (
+              <>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  justifyContent="space-between"
+                  gap={2}
+                  sx={{ mb: 3 }}
+                >
+                  <Person
+                    name={
+                      selectedPatient
+                        ? displayName(selectedPatient.name, s.maskPhi)
+                        : selectedOrder?.medication || shortId(selected.id)
+                    }
+                    sub={
+                      s.maskPhi
+                        ? 'Protected patient details'
+                        : selectedPatient?.external_id || shortId(selected.id)
+                    }
+                  />
+                  <Stack direction="row" gap={1} alignItems="center">
+                    {typeof selected.status === 'string' && <StatusBadge status={selected.status} />}
+                    <IconButton
+                      aria-label="Copy record ID"
+                      onClick={() => {
+                        void navigator.clipboard
+                          .writeText(selected.id)
+                          .then(() => s.notify('Record ID copied.'))
+                          .catch(() => s.notify('Copy is unavailable in this browser.'));
+                      }}
+                    >
+                      <Copy size={15} />
+                    </IconButton>
+                    {kind === 'patients' && hasRole(roles, 'tenant_admin', 'clinical') && !s.maskPhi && (
+                      <Button size="small" variant="outlined" onClick={() => setForm('patient')}>
+                        Edit patient
+                      </Button>
+                    )}
+                  </Stack>
+                </Stack>
+                <Tabs
+                  value={tab}
+                  onChange={(_, value) => setTab(value)}
+                  sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
+                >
+                  <Tab value="overview" label="Overview" />
+                  <Tab value="history" label="Care history" />
+                  <Tab value="audit" label="Audit trail" />
+                </Tabs>
+                {tab === 'overview' && (
+                  <>
+                    <Box className="detail-grid">
+                      {(kind === 'patients'
+                        ? [
+                            ['Patient reference', s.maskPhi ? 'Protected' : selected.external_id],
+                            [
+                              'Date of birth',
+                              s.maskPhi
+                                ? 'Protected'
+                                : date(selected.birth_date, {
+                                    month: 'long',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                  }),
+                            ],
+                            [
+                              'Care facility',
+                              facilities.all.find((f) => f.id === selected.facility_id)?.name,
+                            ],
+                            [
+                              'Registered',
+                              date(selected.created_at, { month: 'long', day: 'numeric', year: 'numeric' }),
+                            ],
+                          ]
+                        : [
+                            ['Therapy', selectedOrder?.medication || '—'],
+                            [
+                              'Prescription reference',
+                              s.maskPhi ? 'Protected' : selectedOrder?.prescription || '—',
+                            ],
+                            [
+                              'Workflow version',
+                              selectedWorkflow
+                                ? `Definition v${selectedWorkflow.definition_version} · Configuration v${selectedWorkflow.version}`
+                                : '—',
+                            ],
+                            [
+                              'Care facility',
+                              facilities.all.find((f) => f.id === selected.facility_id)?.name,
+                            ],
+                          ]
+                      ).map(([key, value]) => (
+                        <Box key={String(key)}>
+                          <Typography variant="caption" color="text.secondary">
+                            {String(key)}
+                          </Typography>
+                          <Typography sx={{ mt: 0.5 }} fontWeight={500}>
+                            {String(value || '—')}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                    {selectedWorkflow && <WorkflowOutcomes workflow={selectedWorkflow} />}{' '}
+                    {kind === 'patients' && (
+                      <Box sx={{ mt: 3 }}>
+                        <Typography variant="h3" sx={{ mb: 1.5 }}>
+                          Therapy history
+                        </Typography>
+                        {orders.all
+                          .filter((o) => o.patient_id === selected.id)
+                          .map((o) => (
+                            <Button
+                              key={o.id}
+                              fullWidth
+                              onClick={() => navigate(`/therapy/${o.id}`)}
+                              sx={{
+                                justifyContent: 'space-between',
+                                p: 1.5,
+                                borderBottom: 1,
+                                borderColor: 'divider',
+                              }}
+                            >
+                              <Typography>{o.medication}</Typography>
+                              <StatusBadge status={o.status} />
+                            </Button>
+                          ))}
+                        {!orders.all.some((o) => o.patient_id === selected.id) && (
+                          <Typography color="text.secondary">
+                            No therapy orders registered for this patient.
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+                  </>
+                )}
+                {tab === 'history' && (
+                  <Stack spacing={2}>
+                    {kind === 'patients'
+                      ? appointments.all
+                          .filter((a) => a.patient_id === selected.id)
+                          .map((a) => (
+                            <Box key={a.id} className="history-item">
+                              <CalendarIcon />
+                              <Box>
+                                <Typography fontWeight={550}>Infusion appointment</Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  {date(a.starts_at)} · {time(a.starts_at)}–{time(a.ends_at)}
+                                </Typography>
+                              </Box>
+                              <StatusBadge status={a.status} />
+                            </Box>
+                          ))
+                      : selectedWorkflow?.checkpoints.map((step, i) => (
+                          <Box key={`${step}-${i}`} className="history-item">
+                            <Box className="history-step">
+                              <Check size={15} />
+                            </Box>
+                            <Box>
+                              <Typography fontWeight={550}>{label(step)}</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Durable checkpoint {i + 1}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        ))}
+                    {kind === 'patients' && !appointments.all.some((a) => a.patient_id === selected.id) && (
+                      <EmptyState
+                        title="No appointments yet"
+                        description="Appointments linked to this patient will appear here."
+                      />
+                    )}
+                  </Stack>
+                )}
+                {tab === 'audit' &&
+                  (audit.allowed ? (
+                    <Stack spacing={2}>
+                      {audit.all
+                        .filter((a) =>
+                          [selected.id, selectedWorkflow?.id, selectedOrder?.id].includes(a.resource_id),
+                        )
+                        .slice(0, 20)
+                        .map((a) => (
+                          <Box key={a.id} className="history-item">
+                            <Box className="history-step">
+                              <FileText size={15} />
+                            </Box>
+                            <Box>
+                              <Typography fontWeight={550}>{label(a.action)}</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {a.actor} · {date(a.at)} · {time(a.at)}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        ))}
+                      {!audit.all.some((a) =>
+                        [selected.id, selectedWorkflow?.id, selectedOrder?.id].includes(a.resource_id),
+                      ) && (
+                        <Typography color="text.secondary">
+                          No audit entries are loaded for this record.
+                        </Typography>
+                      )}
+                    </Stack>
+                  ) : (
+                    <PermissionState />
+                  ))}
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
+      {form && (
+        <EntityForm
+          key={form + (form === 'patient' && id ? id : 'new')}
+          kind={form}
+          initial={form === 'patient' && id ? selected : undefined}
+          onClose={() => setForm(null)}
+        />
+      )}
+    </>
+  );
 }
-function CalendarIcon(){return <Box className="history-step"><Clock3 size={16}/></Box>}
-export function WorkflowOutcomes({workflow:w}:{workflow:Workflow}){const s=useSession();const action=useAction();const [confirm,setConfirm]=useState<{step:string;outcome:string}|null>(null);const roles=s.me!.roles;const can=(step:string)=>step==='billing'?hasRole(roles,'tenant_admin','billing','integration'):['insurance','inventory'].includes(step)?hasRole(roles,'tenant_admin','clinical','integration'):hasRole(roles,'tenant_admin','clinical');const stages=[{key:'insurance',title:'Insurance authorization',success:'approved',reject:'rejected'},{key:'inventory',title:'Medication readiness',success:'available',reject:'unavailable'},{key:'clearance',title:'Clinical clearance',success:'approved',reject:'rejected'},{key:'administration',title:'Therapy administration',success:'completed'},{key:'billing',title:'Billing submission',success:'submitted'}];return <Box sx={{mt:3}}><Typography variant="h3" sx={{mb:1.5}}>Workflow prerequisites & outcomes</Typography><Stack divider={<Divider/>}>{stages.map(stage=>{const expected=stage.key==='billing'?'awaiting_billing':stage.key==='administration'?'scheduled':'awaiting_approvals';const recorded=w.outcomes[stage.key];return <Stack key={stage.key} className="outcome-row" direction={{xs:'column',sm:'row'}} justifyContent="space-between" alignItems={{xs:'flex-start',sm:'center'}} gap={1}><Stack direction="row" alignItems="center" spacing={1.2}><Box className="outcome-icon">{recorded?<CheckCheck size={17}/>:<ShieldCheck size={17}/>}</Box><Box><Typography fontWeight={550}>{stage.title}</Typography><Typography variant="caption" color="text.secondary">{recorded?`Recorded: ${label(recorded)}`:w.status===expected?'Awaiting confirmed outcome':'Waiting for the appropriate workflow stage'}</Typography></Box></Stack>{recorded?<StatusBadge status={recorded}/>:w.status===expected&&can(stage.key)&&<Stack direction="row" spacing={1}><Button size="small" variant="outlined" onClick={()=>setConfirm({step:stage.key,outcome:stage.success})}>{stage.key==='administration'?'Record completed':stage.key==='billing'?'Record submitted':stage.key==='inventory'?'Mark available':'Approve'}</Button>{stage.reject&&<Button size="small" color="error" onClick={()=>setConfirm({step:stage.key,outcome:stage.reject!})}>{stage.key==='inventory'?'Unavailable':'Reject'}</Button>}</Stack>}</Stack>})}</Stack><ConfirmDialog open={!!confirm} title="Record confirmed outcome?" description="Record only a verified business or clinical outcome. This action is audited and may change the therapy's scheduling eligibility." danger={confirm?.outcome==='rejected'||confirm?.outcome==='unavailable'} confirm="Record outcome" pending={action.isPending} onClose={()=>setConfirm(null)} onConfirm={()=>{if(confirm)void action.mutateAsync({path:`/workflows/${w.id}/outcomes`,body:confirm}).then(()=>setConfirm(null)).catch(()=>{})}}/></Box>}
+function CalendarIcon() {
+  return (
+    <Box className="history-step">
+      <Clock3 size={16} />
+    </Box>
+  );
+}
+export function WorkflowOutcomes({ workflow: w }: { workflow: Workflow }) {
+  const s = useSession();
+  const action = useAction();
+  const [confirm, setConfirm] = useState<{ step: string; outcome: string } | null>(null);
+  const roles = s.me!.roles;
+  const can = (step: string) =>
+    step === 'billing'
+      ? hasRole(roles, 'tenant_admin', 'billing', 'integration')
+      : ['insurance', 'inventory'].includes(step)
+        ? hasRole(roles, 'tenant_admin', 'clinical', 'integration')
+        : hasRole(roles, 'tenant_admin', 'clinical');
+  const stages = [
+    { key: 'insurance', title: 'Insurance authorization', success: 'approved', reject: 'rejected' },
+    { key: 'inventory', title: 'Medication readiness', success: 'available', reject: 'unavailable' },
+    { key: 'clearance', title: 'Clinical clearance', success: 'approved', reject: 'rejected' },
+    { key: 'administration', title: 'Therapy administration', success: 'completed' },
+    { key: 'billing', title: 'Billing submission', success: 'submitted' },
+  ];
+  return (
+    <Box sx={{ mt: 3 }}>
+      <Typography variant="h3" sx={{ mb: 1.5 }}>
+        Workflow prerequisites & outcomes
+      </Typography>
+      <Stack divider={<Divider />}>
+        {stages.map((stage) => {
+          const expected =
+            stage.key === 'billing'
+              ? 'awaiting_billing'
+              : stage.key === 'administration'
+                ? 'scheduled'
+                : 'awaiting_approvals';
+          const recorded = w.outcomes[stage.key];
+          return (
+            <Stack
+              key={stage.key}
+              className="outcome-row"
+              direction={{ xs: 'column', sm: 'row' }}
+              justifyContent="space-between"
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              gap={1}
+            >
+              <Stack direction="row" alignItems="center" spacing={1.2}>
+                <Box className="outcome-icon">
+                  {recorded ? <CheckCheck size={17} /> : <ShieldCheck size={17} />}
+                </Box>
+                <Box>
+                  <Typography fontWeight={550}>{stage.title}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {recorded
+                      ? `Recorded: ${label(recorded)}`
+                      : w.status === expected
+                        ? 'Awaiting confirmed outcome'
+                        : 'Waiting for the appropriate workflow stage'}
+                  </Typography>
+                </Box>
+              </Stack>
+              {recorded ? (
+                <StatusBadge status={recorded} />
+              ) : (
+                w.status === expected &&
+                can(stage.key) && (
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setConfirm({ step: stage.key, outcome: stage.success })}
+                    >
+                      {stage.key === 'administration'
+                        ? 'Record completed'
+                        : stage.key === 'billing'
+                          ? 'Record submitted'
+                          : stage.key === 'inventory'
+                            ? 'Mark available'
+                            : 'Approve'}
+                    </Button>
+                    {stage.reject && (
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => setConfirm({ step: stage.key, outcome: stage.reject! })}
+                      >
+                        {stage.key === 'inventory' ? 'Unavailable' : 'Reject'}
+                      </Button>
+                    )}
+                  </Stack>
+                )
+              )}
+            </Stack>
+          );
+        })}
+      </Stack>
+      <ConfirmDialog
+        open={!!confirm}
+        title="Record confirmed outcome?"
+        description="Record only a verified business or clinical outcome. This action is audited and may change the therapy's scheduling eligibility."
+        danger={confirm?.outcome === 'rejected' || confirm?.outcome === 'unavailable'}
+        confirm="Record outcome"
+        pending={action.isPending}
+        onClose={() => setConfirm(null)}
+        onConfirm={() => {
+          if (confirm)
+            void action
+              .mutateAsync({ path: `/workflows/${w.id}/outcomes`, body: confirm })
+              .then(() => setConfirm(null))
+              .catch(() => {});
+        }}
+      />
+    </Box>
+  );
+}

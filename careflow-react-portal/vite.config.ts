@@ -11,5 +11,10 @@ export default defineConfig({
     },
   },
   build: { chunkSizeWarningLimit: 650 },
-  test: { environment: 'jsdom', setupFiles: ['./src/test/setup.ts'], include: ['src/**/*.test.{ts,tsx}'], restoreMocks: true },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
+    restoreMocks: true,
+  },
 });

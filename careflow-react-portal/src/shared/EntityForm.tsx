@@ -1,4 +1,16 @@
-import { Alert, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import {
+  Alert,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,24 +20,349 @@ import { friendlyError } from '../services/apiClient';
 import { useSession } from '../stores/session';
 import type { Entity } from './types';
 
-export type FormKind='patient'|'order'|'appointment'|'schedule'|'facility'|'staff'|'resource'|'membership';
-interface Field{name:string;label:string;type?:string;options?:{value:string;label:string}[];hint?:string;initial?:string;optional?:boolean}
-const titles:Record<FormKind,string>={patient:'Register patient',order:'Create therapy order',appointment:'Book appointment',schedule:'Create schedule',facility:'Add facility',staff:'Add clinical staff',resource:'Add care resource',membership:'Manage member access'};
-export function EntityForm({kind,onClose,initial}:{kind:FormKind;onClose:()=>void;initial?:Entity}){
-  const facilities=useCollection('facilities');const patients=useCollection('patients');const orders=useCollection('orders');const staff=useCollection('staff');const resources=useCollection('care-resources');const action=useAction();const mode=useSession(s=>s.mode);const key=useRef(crypto.randomUUID());const [error,setError]=useState('');
-  const fields=useMemo<Field[]>(()=>{const facility:Field={name:'facility_id',label:'Care facility',type:'select',options:facilities.all.map(f=>({value:f.id,label:f.name}))};switch(kind){
-    case 'patient':return [{name:'name',label:'Full name'},{name:'external_id',label:'Patient reference',hint:'Unique within this workspace.'},{name:'birth_date',label:'Date of birth',type:'date'},facility];
-    case 'order':return [{name:'patient_id',label:'Patient',type:'select',options:patients.items.map(p=>({value:p.id,label:`${p.name} · ${p.external_id}`}))},{name:'medication',label:'Medication'},{name:'prescription',label:'Approved prescription reference',hint:'The reference will be reviewed before scheduling.'}];
-    case 'appointment':return [{name:'order_id',label:'Eligible therapy order',type:'select',options:orders.items.filter(o=>o.status==='ready_to_schedule').map(o=>({value:o.id,label:`${patients.all.find(p=>p.id===o.patient_id)?.name||o.patient_id} · ${o.medication}`}))},{name:'nurse_id',label:'Infusion-qualified nurse',type:'select',options:staff.all.filter(n=>n.active&&n.qualifications.includes('infusion')).map(n=>({value:n.id,label:`${n.name} · ${facilities.all.find(f=>f.id===n.facility_id)?.name||''}`}))},{name:'resource_id',label:'Chair or room',type:'select',options:resources.all.map(r=>({value:r.id,label:`${r.name} · ${facilities.all.find(f=>f.id===r.facility_id)?.name||''}`}))},{name:'starts_at',label:'Starts at',type:'datetime-local'},{name:'ends_at',label:'Ends at',type:'datetime-local'}];
-    case 'schedule':return [{name:'expression',label:'Cron or interval expression',initial:'@every 15m',hint:'Examples: @every 15m · 0 2 * * * · weekdays: 0 9 * * 1-5'}];
-    case 'facility':return [{name:'name',label:'Facility name'},{name:'capacity',label:'Concurrent appointment capacity',type:'number',initial:'8'}];
-    case 'staff':return [{name:'name',label:'Staff name'},facility,{name:'qualifications',label:'Recorded qualifications',initial:'infusion',hint:'Comma-separated qualifications confirmed by your organization.'}];
-    case 'resource':return [{name:'name',label:'Resource name'},facility,{name:'kind',label:'Resource type',type:'select',options:[{value:'chair',label:'Infusion chair'},{value:'room',label:'Treatment room'}],initial:'chair'}];
-    case 'membership':return [{name:'user_id',label:'Identity-provider user ID'},{name:'role',label:'Role',type:'select',initial:'clinical',options:[{value:'clinical',label:'Clinical staff'},{value:'billing',label:'Billing specialist'},{value:'integration',label:'Integration engineer'},{value:'auditor',label:'Auditor'},{value:'tenant_admin',label:'Tenant administrator'}]},{name:'facility',label:'Facility access',type:'select',initial:'*',options:[{value:'*',label:'All authorized tenant facilities'},...facilities.all.map(f=>({value:f.id,label:f.name}))]},{name:'active',label:'Membership status',type:'select',initial:'true',options:[{value:'true',label:'Active'},{value:'false',label:'Revoke access'}]}];
-  }},[kind,facilities.all,patients.items,patients.all,orders.items,staff.all,resources.all]);
-  const shape:Record<string,z.ZodString>={};fields.forEach(f=>{shape[f.name]=z.string().trim().min(f.optional?0:1,`${f.label} is required`).max(f.name==='prescription'?2000:200,'Please use a shorter value')});
-  const schema=z.object(shape).superRefine((v,ctx)=>{if(kind==='patient'&&(!/^\d{4}-\d{2}-\d{2}$/.test(v.birth_date)||new Date(v.birth_date)>new Date()))ctx.addIssue({code:'custom',path:['birth_date'],message:'Enter a valid date in the past.'});if(kind==='appointment'&&new Date(v.ends_at)<=new Date(v.starts_at))ctx.addIssue({code:'custom',path:['ends_at'],message:'End time must be after start time.'});if(kind==='facility'&&(!Number.isInteger(Number(v.capacity))||Number(v.capacity)<1||Number(v.capacity)>1000))ctx.addIssue({code:'custom',path:['capacity'],message:'Enter a capacity from 1 to 1000.'})});
-  const defaults=Object.fromEntries(fields.map(f=>[f.name,String(initial?.[f.name]??f.initial??'')]));const {register,handleSubmit,formState:{errors}}=useForm<Record<string,string>>({defaultValues:defaults,resolver:zodResolver(schema) as Resolver<Record<string,string>>});
-  const submit=async(values:Record<string,string>)=>{setError('');let body:unknown=values;let path: string;let method='POST';switch(kind){case 'patient':path=initial?`/patients/${initial.id}`:'/patients';if(initial)method='PATCH';break;case 'order':path='/orders';break;case 'appointment':path='/appointments';body={...values,starts_at:new Date(values.starts_at).toISOString(),ends_at:new Date(values.ends_at).toISOString()};break;case 'schedule':path='/schedules';body={kind:'reconciliation',expression:values.expression};break;case 'facility':path='/facilities';body={...values,capacity:Number(values.capacity)};break;case 'staff':path='/staff';body={...values,qualifications:values.qualifications.split(',').map(x=>x.trim()).filter(Boolean)};break;case 'resource':path='/care-resources';break;case 'membership':path=`/memberships/${encodeURIComponent(values.user_id)}`;method='PUT';body={roles:[values.role],facilities:[values.facility],active:values.active==='true'};break}try{await action.mutateAsync({path,body,method,key:key.current});onClose()}catch(e){setError(friendlyError(e))}};
-  return <Dialog open onClose={action.isPending?undefined:onClose} fullWidth maxWidth="sm" aria-labelledby="entity-form-title"><form onSubmit={handleSubmit(submit)}><DialogTitle id="entity-form-title">{initial?'Edit patient':titles[kind]}</DialogTitle><DialogContent><Typography color="text.secondary" sx={{mb:2.5}}>{mode==='demo'?'Changes apply to synthetic demo records in this browser session.':'Changes are recorded in your current tenant and audited.'}</Typography><Stack spacing={2.1}>{error&&<Alert severity="error">{error}</Alert>}{fields.map(field=><TextField key={field.name} label={field.label} {...register(field.name)} type={field.type==='select'?'text':field.type||'text'} select={field.type==='select'} defaultValue={defaults[field.name]} error={!!errors[field.name]} helperText={String(errors[field.name]?.message||field.hint||'')} slotProps={{inputLabel:{shrink:true},htmlInput:{maxLength:field.name==='prescription'?2000:200}}} fullWidth>{field.options?.map(option=><MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}{field.type==='select'&&!field.options?.length&&<MenuItem disabled value="">No eligible records available</MenuItem>}</TextField>)}</Stack>{kind==='appointment'&&<Alert severity="info" sx={{mt:2}}>Availability and facility capacity are checked when you confirm the booking.</Alert>}</DialogContent><DialogActions sx={{p:2.5}}><Button onClick={onClose} disabled={action.isPending}>Cancel</Button><Button type="submit" variant="contained" disabled={action.isPending} startIcon={action.isPending?<CircularProgress size={14} color="inherit"/>:undefined}>{kind==='appointment'?'Confirm booking':initial?'Save changes':'Save '+(kind==='membership'?'access':kind)}</Button></DialogActions></form></Dialog>
+export type FormKind =
+  'patient' | 'order' | 'appointment' | 'schedule' | 'facility' | 'staff' | 'resource' | 'membership';
+interface Field {
+  name: string;
+  label: string;
+  type?: string;
+  options?: { value: string; label: string }[];
+  hint?: string;
+  initial?: string;
+  optional?: boolean;
+}
+const titles: Record<FormKind, string> = {
+  patient: 'Register patient',
+  order: 'Create therapy order',
+  appointment: 'Book appointment',
+  schedule: 'Create schedule',
+  facility: 'Add facility',
+  staff: 'Add clinical staff',
+  resource: 'Add care resource',
+  membership: 'Manage member access',
+};
+export function EntityForm({
+  kind,
+  onClose,
+  initial,
+}: {
+  kind: FormKind;
+  onClose: () => void;
+  initial?: Entity;
+}) {
+  const facilities = useCollection('facilities');
+  const patients = useCollection('patients');
+  const orders = useCollection('orders');
+  const staff = useCollection('staff');
+  const resources = useCollection('care-resources');
+  const action = useAction();
+  const mode = useSession((s) => s.mode);
+  const key = useRef(crypto.randomUUID());
+  const [error, setError] = useState('');
+  const fields = useMemo<Field[]>(() => {
+    const facility: Field = {
+      name: 'facility_id',
+      label: 'Care facility',
+      type: 'select',
+      options: facilities.all.map((f) => ({ value: f.id, label: f.name })),
+    };
+    switch (kind) {
+      case 'patient':
+        return [
+          { name: 'name', label: 'Full name' },
+          { name: 'external_id', label: 'Patient reference', hint: 'Unique within this workspace.' },
+          { name: 'birth_date', label: 'Date of birth', type: 'date' },
+          facility,
+        ];
+      case 'order':
+        return [
+          {
+            name: 'patient_id',
+            label: 'Patient',
+            type: 'select',
+            options: patients.items.map((p) => ({ value: p.id, label: `${p.name} · ${p.external_id}` })),
+          },
+          { name: 'medication', label: 'Medication' },
+          {
+            name: 'prescription',
+            label: 'Approved prescription reference',
+            hint: 'The reference will be reviewed before scheduling.',
+          },
+        ];
+      case 'appointment':
+        return [
+          {
+            name: 'order_id',
+            label: 'Eligible therapy order',
+            type: 'select',
+            options: orders.items
+              .filter((o) => o.status === 'ready_to_schedule')
+              .map((o) => ({
+                value: o.id,
+                label: `${patients.all.find((p) => p.id === o.patient_id)?.name || o.patient_id} · ${o.medication}`,
+              })),
+          },
+          {
+            name: 'nurse_id',
+            label: 'Infusion-qualified nurse',
+            type: 'select',
+            options: staff.all
+              .filter((n) => n.active && n.qualifications.includes('infusion'))
+              .map((n) => ({
+                value: n.id,
+                label: `${n.name} · ${facilities.all.find((f) => f.id === n.facility_id)?.name || ''}`,
+              })),
+          },
+          {
+            name: 'resource_id',
+            label: 'Chair or room',
+            type: 'select',
+            options: resources.all.map((r) => ({
+              value: r.id,
+              label: `${r.name} · ${facilities.all.find((f) => f.id === r.facility_id)?.name || ''}`,
+            })),
+          },
+          { name: 'starts_at', label: 'Starts at', type: 'datetime-local' },
+          { name: 'ends_at', label: 'Ends at', type: 'datetime-local' },
+        ];
+      case 'schedule':
+        return [
+          {
+            name: 'expression',
+            label: 'Cron or interval expression',
+            initial: '@every 15m',
+            hint: 'Examples: @every 15m · 0 2 * * * · weekdays: 0 9 * * 1-5',
+          },
+        ];
+      case 'facility':
+        return [
+          { name: 'name', label: 'Facility name' },
+          { name: 'capacity', label: 'Concurrent appointment capacity', type: 'number', initial: '8' },
+        ];
+      case 'staff':
+        return [
+          { name: 'name', label: 'Staff name' },
+          facility,
+          {
+            name: 'qualifications',
+            label: 'Recorded qualifications',
+            initial: 'infusion',
+            hint: 'Comma-separated qualifications confirmed by your organization.',
+          },
+        ];
+      case 'resource':
+        return [
+          { name: 'name', label: 'Resource name' },
+          facility,
+          {
+            name: 'kind',
+            label: 'Resource type',
+            type: 'select',
+            options: [
+              { value: 'chair', label: 'Infusion chair' },
+              { value: 'room', label: 'Treatment room' },
+            ],
+            initial: 'chair',
+          },
+        ];
+      case 'membership':
+        return [
+          { name: 'user_id', label: 'Identity-provider user ID' },
+          {
+            name: 'role',
+            label: 'Role',
+            type: 'select',
+            initial: 'clinical',
+            options: [
+              { value: 'clinical', label: 'Clinical staff' },
+              { value: 'billing', label: 'Billing specialist' },
+              { value: 'integration', label: 'Integration engineer' },
+              { value: 'auditor', label: 'Auditor' },
+              { value: 'tenant_admin', label: 'Tenant administrator' },
+            ],
+          },
+          {
+            name: 'facility',
+            label: 'Facility access',
+            type: 'select',
+            initial: '*',
+            options: [
+              { value: '*', label: 'All authorized tenant facilities' },
+              ...facilities.all.map((f) => ({ value: f.id, label: f.name })),
+            ],
+          },
+          {
+            name: 'active',
+            label: 'Membership status',
+            type: 'select',
+            initial: 'true',
+            options: [
+              { value: 'true', label: 'Active' },
+              { value: 'false', label: 'Revoke access' },
+            ],
+          },
+        ];
+    }
+  }, [kind, facilities.all, patients.items, patients.all, orders.items, staff.all, resources.all]);
+  const shape: Record<string, z.ZodString> = {};
+  fields.forEach((f) => {
+    shape[f.name] = z
+      .string()
+      .trim()
+      .min(f.optional ? 0 : 1, `${f.label} is required`)
+      .max(f.name === 'prescription' ? 2000 : 200, 'Please use a shorter value');
+  });
+  const schema = z.object(shape).superRefine((v, ctx) => {
+    if (
+      kind === 'patient' &&
+      (!/^\d{4}-\d{2}-\d{2}$/.test(v.birth_date) || new Date(v.birth_date) > new Date())
+    )
+      ctx.addIssue({ code: 'custom', path: ['birth_date'], message: 'Enter a valid date in the past.' });
+    if (kind === 'appointment' && new Date(v.ends_at) <= new Date(v.starts_at))
+      ctx.addIssue({ code: 'custom', path: ['ends_at'], message: 'End time must be after start time.' });
+    if (
+      kind === 'facility' &&
+      (!Number.isInteger(Number(v.capacity)) || Number(v.capacity) < 1 || Number(v.capacity) > 1000)
+    )
+      ctx.addIssue({ code: 'custom', path: ['capacity'], message: 'Enter a capacity from 1 to 1000.' });
+  });
+  const defaults = Object.fromEntries(
+    fields.map((f) => [f.name, String(initial?.[f.name] ?? f.initial ?? '')]),
+  );
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<Record<string, string>>({
+    defaultValues: defaults,
+    resolver: zodResolver(schema) as Resolver<Record<string, string>>,
+  });
+  const submit = async (values: Record<string, string>) => {
+    setError('');
+    let body: unknown = values;
+    let path: string;
+    let method = 'POST';
+    switch (kind) {
+      case 'patient':
+        path = initial ? `/patients/${initial.id}` : '/patients';
+        if (initial) method = 'PATCH';
+        break;
+      case 'order':
+        path = '/orders';
+        break;
+      case 'appointment':
+        path = '/appointments';
+        body = {
+          ...values,
+          starts_at: new Date(values.starts_at).toISOString(),
+          ends_at: new Date(values.ends_at).toISOString(),
+        };
+        break;
+      case 'schedule':
+        path = '/schedules';
+        body = { kind: 'reconciliation', expression: values.expression };
+        break;
+      case 'facility':
+        path = '/facilities';
+        body = { ...values, capacity: Number(values.capacity) };
+        break;
+      case 'staff':
+        path = '/staff';
+        body = {
+          ...values,
+          qualifications: values.qualifications
+            .split(',')
+            .map((x) => x.trim())
+            .filter(Boolean),
+        };
+        break;
+      case 'resource':
+        path = '/care-resources';
+        break;
+      case 'membership':
+        path = `/memberships/${encodeURIComponent(values.user_id)}`;
+        method = 'PUT';
+        body = { roles: [values.role], facilities: [values.facility], active: values.active === 'true' };
+        break;
+    }
+    try {
+      await action.mutateAsync({ path, body, method, key: key.current });
+      onClose();
+    } catch (e) {
+      setError(friendlyError(e));
+    }
+  };
+  return (
+    <Dialog
+      open
+      onClose={action.isPending ? undefined : onClose}
+      fullWidth
+      maxWidth="sm"
+      aria-labelledby="entity-form-title"
+    >
+      <form onSubmit={handleSubmit(submit)}>
+        <DialogTitle id="entity-form-title">{initial ? 'Edit patient' : titles[kind]}</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary" sx={{ mb: 2.5 }}>
+            {mode === 'demo'
+              ? 'Changes apply to synthetic demo records in this browser session.'
+              : 'Changes are recorded in your current tenant and audited.'}
+          </Typography>
+          <Stack spacing={2.1}>
+            {error && <Alert severity="error">{error}</Alert>}
+            {fields.map((field) => (
+              <TextField
+                key={field.name}
+                label={field.label}
+                {...register(field.name)}
+                type={field.type === 'select' ? 'text' : field.type || 'text'}
+                select={field.type === 'select'}
+                defaultValue={defaults[field.name]}
+                error={!!errors[field.name]}
+                helperText={String(errors[field.name]?.message || field.hint || '')}
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { maxLength: field.name === 'prescription' ? 2000 : 200 },
+                }}
+                fullWidth
+              >
+                {field.options?.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+                {field.type === 'select' && !field.options?.length && (
+                  <MenuItem disabled value="">
+                    No eligible records available
+                  </MenuItem>
+                )}
+              </TextField>
+            ))}
+          </Stack>
+          {kind === 'appointment' && (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              Availability and facility capacity are checked when you confirm the booking.
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={onClose} disabled={action.isPending}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={action.isPending}
+            startIcon={action.isPending ? <CircularProgress size={14} color="inherit" /> : undefined}
+          >
+            {kind === 'appointment'
+              ? 'Confirm booking'
+              : initial
+                ? 'Save changes'
+                : 'Save ' + (kind === 'membership' ? 'access' : kind)}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
+  );
 }

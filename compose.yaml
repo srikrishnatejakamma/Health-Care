@@ -1,5 +1,12 @@
 name: healthcare-framework
 services:
+  portal:
+    build: ./careflow-react-portal
+    profiles: [ui]
+    ports:
+      - "127.0.0.1:15173:8080"
+    depends_on:
+      - api
   test:
     build:
       context: .

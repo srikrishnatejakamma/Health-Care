@@ -5,3 +5,7 @@ data
 *.log
 coverage.out
 Requirment.txt
+careflow-react-portal/node_modules
+careflow-react-portal/dist
+careflow-react-portal/test-results
+careflow-react-portal/playwright-report
