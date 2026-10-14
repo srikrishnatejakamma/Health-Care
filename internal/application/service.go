@@ -46,7 +46,23 @@ func (s *Service) Emit(ctx context.Context, tx database.Tx, action, id string) e
 	if err = database.Put(tx, "audit", a.ID, a); err != nil {
 		return err
 	}
+	type counter struct {
+		ID       string `json:"id"`
+		TenantID string `json:"tenant_id"`
+		Value    uint64 `json:"value"`
+	}
+	sequence, err := database.Get[counter](tx, "event_sequences", "sequence")
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return err
+	}
+	sequence.ID = "sequence"
+	sequence.TenantID = scope.TenantID
+	sequence.Value++
+	if err = database.Put(tx, "event_sequences", sequence.ID, sequence); err != nil {
+		return err
+	}
 	e := domain.Event{ID: domain.ID(), TenantID: scope.TenantID, Type: action, AggregateID: id, SchemaVersion: 1, ConfigurationVersion: tx.Tenant().Version, CorrelationID: scope.CorrelationID, OccurredAt: now}
+	e.Sequence = sequence.Value
 	return database.Put(tx, "outbox", e.ID, e)
 }
 
@@ -654,9 +670,18 @@ func (s *Service) JobAction(ctx context.Context, key, id string, in ScheduleActi
 			if j.Status != "dead" && j.Status != "cancelled" {
 				return nil, domain.ErrConflict
 			}
-			pending:=0
-			if err=database.Each[domain.Job](tx,"jobs",func(v domain.Job)error{if v.Status=="queued"||v.Status=="running"{pending++};return nil});err!=nil{return nil,err}
-			if pending>=tx.Tenant().Quotas.QueuedJobs{return nil,domain.ErrQuota}
+			pending := 0
+			if err = database.Each[domain.Job](tx, "jobs", func(v domain.Job) error {
+				if v.Status == "queued" || v.Status == "running" {
+					pending++
+				}
+				return nil
+			}); err != nil {
+				return nil, err
+			}
+			if pending >= tx.Tenant().Quotas.QueuedJobs {
+				return nil, domain.ErrQuota
+			}
 			j.Status = "queued"
 			j.Attempt = 0
 			j.DueAt = s.Now()

@@ -63,8 +63,12 @@ func env(k, fallback string) string {
 func Load() (Config, error) {
 	c := Config{Address: env("HTTP_ADDR", "127.0.0.1:8080"), Store: env("STORE", "memory"), DatabaseURL: os.Getenv("DATABASE_URL"), AuthKey: os.Getenv("AUTH_KEY"), AuthPublicKeyFile: os.Getenv("AUTH_PUBLIC_KEY_FILE"), Issuer: env("AUTH_ISSUER", "healthcare-local"), Audience: env("AUTH_AUDIENCE", "healthcare-api"), Environment: env("APP_ENV", "development"), TLSCert: os.Getenv("TLS_CERT_FILE"), TLSKey: os.Getenv("TLS_KEY_FILE"), ShutdownTimeout: 15 * time.Second}
 	c.GRPCAddress = os.Getenv("GRPC_ADDR")
-	if c.Environment!="development"&&c.Environment!="test"&&c.Environment!="production"{return c,errors.New("APP_ENV must be development, test or production")}
-	if strings.HasPrefix(c.AuthKey,"replace-with-"){return c,errors.New("replace the example AUTH_KEY with a randomly generated secret")}
+	if c.Environment != "development" && c.Environment != "test" && c.Environment != "production" {
+		return c, errors.New("APP_ENV must be development, test or production")
+	}
+	if strings.HasPrefix(c.AuthKey, "replace-with-") {
+		return c, errors.New("replace the example AUTH_KEY with a randomly generated secret")
+	}
 	workers, err := strconv.Atoi(env("WORKERS", "4"))
 	if err != nil || workers < 1 || workers > 64 {
 		return c, errors.New("WORKERS must be between 1 and 64")

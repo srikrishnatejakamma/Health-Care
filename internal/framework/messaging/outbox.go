@@ -20,6 +20,7 @@ type Envelope struct {
 	ConfigurationVersion int       `json:"configuration_version"`
 	CorrelationID        string    `json:"correlation_id"`
 	OccurredAt           time.Time `json:"occurred_at"`
+	Sequence             uint64    `json:"sequence"`
 }
 type Sink interface {
 	Publish(context.Context, string, []byte) error
@@ -33,15 +34,24 @@ func (o *Outbox) PublishOne(ctx context.Context) error {
 	var e domain.Event
 	now := o.Service.Now()
 	err := o.Service.Store.Atomic(ctx, func(tx database.Tx) error {
-		return database.Each[domain.Event](tx, "outbox", func(v domain.Event) error {
-			if e.ID != "" || v.Published || v.DeliveryLeaseUntil.After(now) {
-				return nil
+		if err := database.Each[domain.Event](tx, "outbox", func(v domain.Event) error {
+			if !v.Published && (e.ID == "" || v.Sequence < e.Sequence) {
+				e = v
 			}
-			v.DeliveryLeaseID = domain.ID()
-			v.DeliveryLeaseUntil = now.Add(30 * time.Second)
-			e = v
-			return database.Put(tx, "outbox", v.ID, v)
-		})
+			return nil
+		}); err != nil {
+			return err
+		}
+		if e.ID == "" {
+			return nil
+		}
+		if e.DeliveryLeaseUntil.After(now) {
+			e = domain.Event{}
+			return nil
+		}
+		e.DeliveryLeaseID = domain.ID()
+		e.DeliveryLeaseUntil = now.Add(30 * time.Second)
+		return database.Put(tx, "outbox", e.ID, e)
 	})
 	if err != nil {
 		return err
@@ -49,7 +59,7 @@ func (o *Outbox) PublishOne(ctx context.Context) error {
 	if e.ID == "" {
 		return domain.ErrNotFound
 	}
-	b, err := json.Marshal(Envelope{TenantID: e.TenantID, EventID: e.ID, EventType: e.Type, AggregateID: e.AggregateID, SchemaVersion: e.SchemaVersion, ConfigurationVersion: e.ConfigurationVersion, CorrelationID: e.CorrelationID, OccurredAt: e.OccurredAt})
+	b, err := json.Marshal(Envelope{TenantID: e.TenantID, EventID: e.ID, EventType: e.Type, AggregateID: e.AggregateID, SchemaVersion: e.SchemaVersion, ConfigurationVersion: e.ConfigurationVersion, CorrelationID: e.CorrelationID, OccurredAt: e.OccurredAt, Sequence: e.Sequence})
 	if err != nil {
 		return err
 	}

@@ -156,6 +156,7 @@ type Event struct {
 	CorrelationID        string    `json:"correlation_id"`
 	OccurredAt           time.Time `json:"occurred_at"`
 	Published            bool      `json:"published"`
+	Sequence             uint64    `json:"sequence"`
 	DeliveryLeaseID      string    `json:"delivery_lease_id,omitempty"`
 	DeliveryLeaseUntil   time.Time `json:"delivery_lease_until,omitempty"`
 }
