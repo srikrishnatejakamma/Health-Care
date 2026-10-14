@@ -1450,6 +1450,20 @@ code {
 .nav-tooltip {
   display: block;
 }
+:root[data-theme='dark'] .nav-item,
+:root[data-theme='dark'] .brand-subtitle,
+:root[data-theme='dark'] .global-search-trigger.MuiButton-root,
+:root[data-theme='dark'] .global-search-trigger kbd,
+:root[data-theme='dark'] .environment-chip.MuiChip-root,
+:root[data-theme='dark'] .eyebrow,
+:root[data-theme='dark'] .page-heading .MuiTypography-body1,
+:root[data-theme='dark'] .workflow-node span,
+:root[data-theme='dark'] .fc .fc-col-header-cell-cushion,
+:root[data-theme='dark'] .fc .fc-daygrid-day-number {
+  color: #b1bed4;
+}
+:root[data-theme='dark'] .nav-item.active { color: #aec3ff; }
+:root[data-theme='dark'] .attention-card .MuiButton-root { color: #ebc987 !important; }
 .global-search-trigger kbd,
 .environment-chip.MuiChip-root,
 .chart-legend {
