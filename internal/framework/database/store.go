@@ -27,8 +27,69 @@ type Tx interface {
 	Put(kind, id string, data json.RawMessage) error
 	Delete(kind, id string) error
 }
-func Get[T any](tx Tx, kind, id string) (T, error) { var v T; b, err := tx.Get(kind,id); if err != nil { return v,err }; err = json.Unmarshal(b,&v); return v,err }
-func Put[T any](tx Tx, kind, id string, v T) error { b,err := json.Marshal(v); if err != nil { return err }; return tx.Put(kind,id,b) }
-func List[T any](tx Tx, kind, after string, limit int) ([]T,error) { rows,err:=tx.List(kind,after,limit); if err!=nil{return nil,err}; result:=make([]T,0,len(rows)); for _,b:=range rows{var v T;if err=json.Unmarshal(b,&v);err!=nil{return nil,err};result=append(result,v)};return result,nil }
+
+func Get[T any](tx Tx, kind, id string) (T, error) {
+	var v T
+	b, err := tx.Get(kind, id)
+	if err != nil {
+		return v, err
+	}
+	err = json.Unmarshal(b, &v)
+	return v, err
+}
+func Put[T any](tx Tx, kind, id string, v T) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	return tx.Put(kind, id, b)
+}
+func List[T any](tx Tx, kind, after string, limit int) ([]T, error) {
+	rows, err := tx.List(kind, after, limit)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]T, 0, len(rows))
+	for _, b := range rows {
+		var v T
+		if err = json.Unmarshal(b, &v); err != nil {
+			return nil, err
+		}
+		result = append(result, v)
+	}
+	return result, nil
+}
+
 // Each bounds memory even when a tenant owns a large number of records.
-func Each[T any](tx Tx, kind string, fn func(T) error) error { after:="";for{rows,err:=tx.List(kind,after,100);if err!=nil{return err};for _,b:=range rows{var v T;if err=json.Unmarshal(b,&v);err!=nil{return err};if err=fn(v);err!=nil{return err};var id struct{ID string `json:"id"`; EventID string `json:"event_id"`};if err=json.Unmarshal(b,&id);err!=nil{return err};after=id.ID;if after==""{after=id.EventID}};if len(rows)<100{return nil}} }
+func Each[T any](tx Tx, kind string, fn func(T) error) error {
+	after := ""
+	for {
+		rows, err := tx.List(kind, after, 100)
+		if err != nil {
+			return err
+		}
+		for _, b := range rows {
+			var v T
+			if err = json.Unmarshal(b, &v); err != nil {
+				return err
+			}
+			if err = fn(v); err != nil {
+				return err
+			}
+			var id struct {
+				ID      string `json:"id"`
+				EventID string `json:"event_id"`
+			}
+			if err = json.Unmarshal(b, &id); err != nil {
+				return err
+			}
+			after = id.ID
+			if after == "" {
+				after = id.EventID
+			}
+		}
+		if len(rows) < 100 {
+			return nil
+		}
+	}
+}

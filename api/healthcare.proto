@@ -1,0 +1,13 @@
+syntax = "proto3";
+package healthcare.v1;
+option go_package = "healthcare/api";
+
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/struct.proto";
+
+// Metadata: authorization: Bearer <JWT>, x-tenant-id: <authorized tenant>.
+// StringValue.value is the resource ID; responses use the REST resource fields.
+service HealthcareService {
+  rpc GetWorkflow(google.protobuf.StringValue) returns (google.protobuf.Struct);
+  rpc GetPatient(google.protobuf.StringValue) returns (google.protobuf.Struct);
+}
