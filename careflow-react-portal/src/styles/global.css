@@ -1462,8 +1462,12 @@ code {
 :root[data-theme='dark'] .fc .fc-daygrid-day-number {
   color: #b1bed4;
 }
-:root[data-theme='dark'] .nav-item.active { color: #aec3ff; }
-:root[data-theme='dark'] .attention-card .MuiButton-root { color: #ebc987 !important; }
+:root[data-theme='dark'] .nav-item.active {
+  color: #aec3ff;
+}
+:root[data-theme='dark'] .attention-card .MuiButton-root {
+  color: #ebc987 !important;
+}
 .global-search-trigger kbd,
 .environment-chip.MuiChip-root,
 .chart-legend {

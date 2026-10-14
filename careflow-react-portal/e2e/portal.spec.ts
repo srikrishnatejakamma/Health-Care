@@ -153,6 +153,8 @@ test('dashboard meets automated accessibility checks in both themes', async ({ p
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
       .analyze();
-    expect(results.violations.map((v) => ({ mode, id: v.id, nodes: v.nodes.map((n) => n.target) }))).toEqual([]);
+    expect(results.violations.map((v) => ({ mode, id: v.id, nodes: v.nodes.map((n) => n.target) }))).toEqual(
+      [],
+    );
   }
 });

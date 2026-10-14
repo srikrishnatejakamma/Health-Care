@@ -51,7 +51,7 @@ paths:
       description: Authenticated SSE invalidation hints with no clinical payload. Requires the bearer header. Membership and token validity are rechecked at each tick; clients refetch authorized collections.
       responses:
         '200':
-          description: Connected and refresh events at approximately 15 second intervals
+          description: Refresh events at approximately 15 second intervals
           content:
             text/event-stream:
               schema: {type: string}
