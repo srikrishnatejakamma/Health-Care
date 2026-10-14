@@ -1,4 +1,4 @@
-param([string]$BaseUrl = 'http://127.0.0.1:8080')
+param([string]$BaseUrl = 'http://127.0.0.1:18080')
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath (Split-Path -Parent $PSScriptRoot)
 $taskToken = (go run ./cmd/token -subject north-admin -tenant north-health).Trim()

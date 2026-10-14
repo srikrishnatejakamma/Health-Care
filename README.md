@@ -10,7 +10,7 @@ Requires Go 1.25 or later. In PowerShell:
 .\scripts\dev.ps1
 ```
 
-This creates a random signing key in the ignored `.env` file and starts the API at `http://127.0.0.1:8080`. Development mode uses an ephemeral memory store and seeds two organizations: `north-health` / `north-admin` and `south-health` / `south-admin`. Memory mode loses records on restart; use PostgreSQL for durable or multi-process execution.
+This creates a random signing key in the ignored `.env` file and starts the API at `http://127.0.0.1:18080`. Development mode uses an ephemeral memory store and seeds two organizations: `north-health` / `north-admin` and `south-health` / `south-admin`. Memory mode loses records on restart; use PostgreSQL for durable or multi-process execution.
 
 In another terminal, exercise the complete synthetic therapy workflow:
 
@@ -23,7 +23,7 @@ Get a tenant token and inspect membership:
 ```powershell
 $taskToken = go run ./cmd/token -subject north-admin -tenant north-health
 $taskHeaders = @{ Authorization = "Bearer $taskToken" }
-Invoke-RestMethod http://127.0.0.1:8080/api/v1/me -Headers $taskHeaders
+Invoke-RestMethod http://127.0.0.1:18080/api/v1/me -Headers $taskHeaders
 ```
 
 Token generation is an offline operator tool, not an HTTP endpoint. Tokens expire in one hour by default. RS256 mode accepts tokens from the configured identity provider instead.
@@ -36,7 +36,7 @@ docker compose up --build -d
 .\scripts\smoke.ps1
 ```
 
-Compose runs PostgreSQL, migrations, the API and an embedded worker. Localhost ports are 8080 (HTTP), 9090 (gRPC) and 55432 (PostgreSQL). The database credentials in Compose are for local development. Initialization creates a separate application login without table ownership or RLS bypass privileges.
+Compose runs PostgreSQL, migrations, the API and an embedded worker. Localhost ports are 18080 (HTTP), 9090 (gRPC) and 55432 (PostgreSQL). Set `HTTP_ADDR` for a different native port, or `HTTP_PORT` for Compose, and pass the matching `-BaseUrl` to the smoke script. The database credentials in Compose are for local development. Initialization creates a separate application login without table ownership or RLS bypass privileges.
 
 Enable Kafka-compatible Redpanda and the outbox worker:
 
@@ -127,7 +127,7 @@ go build ./cmd/...
 docker compose --profile test run --rm test
 ```
 
-Containerized tests verify real PostgreSQL RLS, relational constraints, rollback, durable state and competing worker connection pools. They add uniquely named synthetic test tenants. Native PostgreSQL tests require both `PG_TEST_ADMIN_URL` and `PG_TEST_RUNTIME_URL`; otherwise they skip. Use `go test -race ./...` with a suitable C toolchain; CI runs it on Linux.
+Containerized tests include the race detector and verify real PostgreSQL RLS, relational constraints, rollback, durable state and competing worker connection pools. They add uniquely named synthetic test tenants. Native PostgreSQL tests require both `PG_TEST_ADMIN_URL` and `PG_TEST_RUNTIME_URL`; otherwise they skip. Native `go test -race ./...` requires a suitable C toolchain.
 
 Other tests cover full workflows, approval gates, tenant/facility denial, platform-role separation, membership revocation, spoofed selectors, quota rollback, duplicate requests, simultaneous bookings, cancellation, suspension, stale leases, cron, gRPC, inbox replay, outbox recovery, JWT algorithms, memory reservations, cache keys and safe retries.
 

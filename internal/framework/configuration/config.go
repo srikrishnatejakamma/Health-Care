@@ -61,7 +61,7 @@ func env(k, fallback string) string {
 	return fallback
 }
 func Load() (Config, error) {
-	c := Config{Address: env("HTTP_ADDR", "127.0.0.1:8080"), Store: env("STORE", "memory"), DatabaseURL: os.Getenv("DATABASE_URL"), AuthKey: os.Getenv("AUTH_KEY"), AuthPublicKeyFile: os.Getenv("AUTH_PUBLIC_KEY_FILE"), Issuer: env("AUTH_ISSUER", "healthcare-local"), Audience: env("AUTH_AUDIENCE", "healthcare-api"), Environment: env("APP_ENV", "development"), TLSCert: os.Getenv("TLS_CERT_FILE"), TLSKey: os.Getenv("TLS_KEY_FILE"), ShutdownTimeout: 15 * time.Second}
+	c := Config{Address: env("HTTP_ADDR", "127.0.0.1:18080"), Store: env("STORE", "memory"), DatabaseURL: os.Getenv("DATABASE_URL"), AuthKey: os.Getenv("AUTH_KEY"), AuthPublicKeyFile: os.Getenv("AUTH_PUBLIC_KEY_FILE"), Issuer: env("AUTH_ISSUER", "healthcare-local"), Audience: env("AUTH_AUDIENCE", "healthcare-api"), Environment: env("APP_ENV", "development"), TLSCert: os.Getenv("TLS_CERT_FILE"), TLSKey: os.Getenv("TLS_KEY_FILE"), ShutdownTimeout: 15 * time.Second}
 	c.GRPCAddress = os.Getenv("GRPC_ADDR")
 	if c.Environment != "development" && c.Environment != "test" && c.Environment != "production" {
 		return c, errors.New("APP_ENV must be development, test or production")

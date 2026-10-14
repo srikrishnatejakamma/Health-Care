@@ -1,7 +1,9 @@
 name: healthcare-framework
 services:
   test:
-    image: golang:1.25-alpine
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.test
     profiles: [test]
     working_dir: /src
     volumes:
@@ -11,7 +13,7 @@ services:
     environment:
       PG_TEST_ADMIN_URL: postgres://postgres:local-admin-password@postgres:5432/healthcare?sslmode=disable
       PG_TEST_RUNTIME_URL: postgres://healthcare_app:local-app-password@postgres:5432/healthcare?sslmode=disable
-    command: [go, test, -count=1, ./...]
+    command: [go, test, -race, -count=1, ./...]
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,7 +57,7 @@ services:
       GOMEMLIMIT: 384MiB
       MEMORY_BUDGET_MB: "256"
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${HTTP_PORT:-18080}:8080"
       - "127.0.0.1:9090:9090"
     depends_on:
       migrate:
