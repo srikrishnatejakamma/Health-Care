@@ -168,6 +168,7 @@ export default function Appointments() {
                   </Typography>
                 </Typography>
                 <LinearProgress
+                  aria-label={`${f.name} appointment capacity`}
                   value={(booked / f.capacity) * 100}
                   variant="determinate"
                   sx={{ height: 7, borderRadius: 5, my: 2 }}

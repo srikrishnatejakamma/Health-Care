@@ -10,8 +10,8 @@ test.describe('live Go API', () => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('/login');
-    await page.getByLabel('Workspace ID', { exact: true }).fill('north-health');
-    await page.getByLabel('Access token', { exact: true }).fill(process.env.CAREFLOW_TEST_TOKEN!);
+    await page.getByRole('textbox', { name: 'Workspace ID', exact: true }).fill('north-health');
+    await page.getByLabel(/Access token/).fill(process.env.CAREFLOW_TEST_TOKEN!);
     await page.getByRole('button', { name: 'Connect workspace', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Operations overview' })).toBeVisible();
     await expect(page.getByText('LIVE', { exact: true })).toBeVisible();
@@ -49,7 +49,7 @@ test.describe('live Go API', () => {
     await page.getByRole('link', { name: 'Memory', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Memory & resource governor' })).toBeVisible();
     const persisted = await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
-    expect(persisted).not.toContain(process.env.CAREFLOW_TEST_TOKEN!);
+    expect(persisted.includes(process.env.CAREFLOW_TEST_TOKEN!)).toBe(false);
     expect(persisted).not.toContain('Synthetic Live Edited');
     expect(errors).toEqual([]);
   });

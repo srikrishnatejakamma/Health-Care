@@ -269,6 +269,7 @@ export default function Monitoring() {
                       </Typography>
                     </Stack>
                     <LinearProgress
+                      aria-label="Tenant resource budget utilization"
                       variant="determinate"
                       value={Math.min(100, (q.used / q.total) * 100)}
                       sx={{ height: 7, borderRadius: 5 }}
