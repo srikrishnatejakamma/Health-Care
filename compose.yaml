@@ -1,5 +1,20 @@
 name: healthcare-framework
 services:
+  test:
+    image: golang:1.25-alpine
+    profiles: [test]
+    working_dir: /src
+    volumes:
+      - ./:/src:ro
+      - go-modules:/go/pkg/mod
+      - go-build:/root/.cache/go-build
+    environment:
+      PG_TEST_ADMIN_URL: postgres://postgres:local-admin-password@postgres:5432/healthcare?sslmode=disable
+      PG_TEST_RUNTIME_URL: postgres://healthcare_app:local-app-password@postgres:5432/healthcare?sslmode=disable
+    command: [go, test, -count=1, ./...]
+    depends_on:
+      postgres:
+        condition: service_healthy
   postgres:
     image: postgres:17-alpine
     environment:
@@ -109,6 +124,8 @@ services:
     volumes:
       - mongo-data:/data/db
 volumes:
+  go-modules:
+  go-build:
   postgres-data:
   kafka-data:
   mongo-data:

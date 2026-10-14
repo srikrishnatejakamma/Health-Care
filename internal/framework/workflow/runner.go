@@ -185,6 +185,9 @@ func (r *Runner) Execute(ctx context.Context, j domain.Job) error {
 		if err != nil {
 			return err
 		}
+		if !current.LeaseUntil.After(r.Service.Now()) {
+			return domain.ErrConflict
+		}
 		current.Status = "completed"
 		current.LeaseID = ""
 		current.LastError = ""

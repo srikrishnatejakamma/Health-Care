@@ -1,0 +1,239 @@
+openapi: 3.0.3
+info:
+  title: Multi-Tenant Healthcare API
+  version: 0.1.0
+  description: Shared-schema reference platform. See README for authorization and supported workflow outcomes.
+servers:
+  - url: http://127.0.0.1:8080
+security:
+  - bearerAuth: []
+paths:
+  /healthz:
+    get:
+      security: []
+      responses:
+        '200': {description: Alive}
+  /readyz:
+    get:
+      security: []
+      responses:
+        '200': {description: Storage ready}
+        '503': {description: Storage unavailable}
+  /api/v1/me:
+    get:
+      responses:
+        '200': {description: Current authorized tenant and membership}
+  /api/v1/platform/tenants:
+    get:
+      responses:
+        '200': {description: Paginated registry, platform operator only}
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, name, admin_user_id, region]
+              additionalProperties: false
+              properties:
+                id: {type: string, pattern: '^[a-zA-Z0-9_-]{1,64}$'}
+                name: {type: string}
+                admin_user_id: {type: string}
+                timezone: {type: string, default: UTC}
+                region: {type: string}
+                quotas: {$ref: '#/components/schemas/Quotas'}
+      responses:
+        '201': {description: Tenant and administrator provisioned}
+        '200': {description: Matching provision request already exists}
+  /api/v1/platform/tenants/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/ID'}
+    get:
+      responses:
+        '200': {description: Tenant metadata}
+    patch:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              additionalProperties: false
+              properties:
+                version: {type: integer, minimum: 1}
+                status: {type: string, enum: [active, suspended, offboarding, archived]}
+                quotas: {$ref: '#/components/schemas/Quotas'}
+      responses:
+        '200': {description: Updated versioned tenant}
+        '409': {description: Stale version}
+  /api/v1/facilities:
+    get:
+      responses:
+        '200': {description: Authorized facility page}
+    post:
+      parameters:
+        - {$ref: '#/components/parameters/Idempotency'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, capacity]
+              additionalProperties: false
+              properties:
+                name: {type: string}
+                capacity: {type: integer, minimum: 1, maximum: 1000}
+      responses:
+        '201': {description: Facility created or original idempotent result}
+  /api/v1/patients:
+    get:
+      responses:
+        '200': {description: Authorized patient page; limit and after query parameters}
+    post:
+      parameters:
+        - {$ref: '#/components/parameters/Idempotency'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [facility_id, external_id, name, birth_date]
+              additionalProperties: false
+              properties:
+                facility_id: {type: string}
+                external_id: {type: string}
+                name: {type: string}
+                birth_date: {type: string, format: date}
+      responses:
+        '201': {description: Patient created}
+        '409': {description: Duplicate external identity or conflicting idempotency key}
+  /api/v1/orders:
+    get:
+      responses:
+        '200': {description: Authorized order page}
+    post:
+      parameters:
+        - {$ref: '#/components/parameters/Idempotency'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [patient_id, medication, prescription]
+              additionalProperties: false
+              properties:
+                patient_id: {type: string}
+                medication: {type: string}
+                prescription: {type: string, description: Approved prescription reference; not an automated clinical validation}
+      responses:
+        '201': {description: Order, workflow, job, audit and outbox committed}
+        '429': {description: Tenant queue quota exhausted; entire mutation rolled back}
+  /api/v1/workflows/{id}/outcomes:
+    parameters:
+      - {$ref: '#/components/parameters/ID'}
+      - {$ref: '#/components/parameters/Idempotency'}
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [step, outcome]
+              additionalProperties: false
+              properties:
+                step: {type: string, enum: [insurance, inventory, clearance, administration, billing]}
+                outcome: {type: string, enum: [approved, rejected, available, unavailable, completed, submitted]}
+      responses:
+        '200': {description: Outcome and advance job recorded; worker applies transition}
+        '409': {description: Invalid state or conflicting previously recorded outcome}
+  /api/v1/workflows/{id}/cancel:
+    parameters:
+      - {$ref: '#/components/parameters/ID'}
+      - {$ref: '#/components/parameters/Idempotency'}
+    post:
+      responses:
+        '200': {description: Workflow cancelled and appointment reservations compensated}
+  /api/v1/appointments:
+    get:
+      responses:
+        '200': {description: Authorized appointment page}
+    post:
+      parameters:
+        - {$ref: '#/components/parameters/Idempotency'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_id, nurse_id, resource_id, starts_at, ends_at]
+              additionalProperties: false
+              properties:
+                order_id: {type: string}
+                nurse_id: {type: string}
+                resource_id: {type: string}
+                starts_at: {type: string, format: date-time}
+                ends_at: {type: string, format: date-time}
+      responses:
+        '201': {description: Appointment confirmed and workflow marked scheduled}
+        '409': {description: Eligibility, capacity or scheduling conflict}
+  /api/v1/schedules:
+    get:
+      responses:
+        '200': {description: Schedule page; tenant administrator or auditor}
+    post:
+      parameters:
+        - {$ref: '#/components/parameters/Idempotency'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, expression]
+              additionalProperties: false
+              properties:
+                kind: {type: string, enum: [reconciliation]}
+                expression: {type: string, example: '@every 15m'}
+      responses:
+        '201': {description: Tenant-timezone schedule created}
+  /fhir/Patient/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/ID'}
+    get:
+      responses:
+        '200': {description: FHIR Patient representation subset}
+        '404': {description: Missing or unauthorized patient}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ID:
+      name: id
+      in: path
+      required: true
+      schema: {type: string}
+    Idempotency:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: {type: string, minLength: 1, maxLength: 128}
+  schemas:
+    Quotas:
+      type: object
+      required: [concurrent_jobs, queued_jobs, memory_mb, requests_per_minute]
+      additionalProperties: false
+      properties:
+        concurrent_jobs: {type: integer, minimum: 1, maximum: 64}
+        queued_jobs: {type: integer, minimum: 1, maximum: 10000}
+        memory_mb: {type: integer, minimum: 8, maximum: 4096}
+        requests_per_minute: {type: integer, minimum: 1, maximum: 100000}

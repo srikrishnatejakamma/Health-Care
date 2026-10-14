@@ -78,11 +78,16 @@ func TestOutboxAcknowledgmentAndRecovery(t *testing.T) {
 		t.Fatalf("delivery mismatch: %d vs %d", len(sink.events), len(page.Items))
 	}
 	ids := map[string]bool{}
+	var lastSequence uint64
 	for _, e := range sink.events {
 		if e.TenantID != "north-health" || e.EventID == "" || e.SchemaVersion != 1 || ids[e.EventID] {
 			t.Fatal("invalid or duplicate envelope", e)
 		}
 		ids[e.EventID] = true
+		if e.Sequence <= lastSequence {
+			t.Fatal("outbox delivery did not preserve tenant sequence")
+		}
+		lastSequence = e.Sequence
 	}
 }
 func TestKafkaInboxAndTenantAuthorization(t *testing.T) {
