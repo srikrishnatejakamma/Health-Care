@@ -10,3 +10,4 @@ careflow-react-portal/dist/
 careflow-react-portal/playwright-report/
 careflow-react-portal/test-results/
 careflow-react-portal/.env.local
+*.tsbuildinfo
