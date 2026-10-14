@@ -51,6 +51,21 @@ type Facility struct {
 	Name string `json:"name"`
 	Capacity int `json:"capacity"`
 }
+type Staff struct {
+	ID string `json:"id"`
+	TenantID string `json:"tenant_id"`
+	FacilityID string `json:"facility_id"`
+	Name string `json:"name"`
+	Qualifications []string `json:"qualifications"`
+	Active bool `json:"active"`
+}
+type CareResource struct {
+	ID string `json:"id"`
+	TenantID string `json:"tenant_id"`
+	FacilityID string `json:"facility_id"`
+	Name string `json:"name"`
+	Kind string `json:"kind"`
+}
 type Patient struct {
 	ID string `json:"id"`
 	TenantID string `json:"tenant_id"`
